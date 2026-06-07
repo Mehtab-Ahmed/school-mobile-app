@@ -17,12 +17,28 @@ import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Colors } from '../../theme/colors';
 
+// New screens
+import StudentLibrary from '../student/StudentLibrary';
+import StudentTransport from '../student/StudentTransport';
+import StudentTimetable from '../student/StudentTimetable';
+import TeacherExams from '../teacher/TeacherExams';
+import TeacherStudents from '../teacher/TeacherStudents';
+import ParentHomework from '../parent/ParentHomework';
+
 type MenuItem = {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
+  subtitle?: string;
   color: string;
   action: () => void;
 };
+
+type ModalScreen =
+  | 'announcements' | 'notifications' | 'leaves' | 'applyLeave'
+  | 'library' | 'transport' | 'timetable'
+  | 'teacherExams' | 'teacherStudents'
+  | 'parentHomework'
+  | null;
 
 export default function MoreScreen() {
   const scheme = useColorScheme();
@@ -30,10 +46,7 @@ export default function MoreScreen() {
   const { user, logout } = useAuthStore();
   const qc = useQueryClient();
 
-  const [showAnn, setShowAnn] = useState(false);
-  const [showLeaves, setShowLeaves] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showApplyLeave, setShowApplyLeave] = useState(false);
+  const [screen, setScreen] = useState<ModalScreen>(null);
   const [leaveForm, setLeaveForm] = useState({ startDate: '', endDate: '', reason: '' });
 
   const { data: annData } = useQuery({
@@ -49,7 +62,7 @@ export default function MoreScreen() {
   const { data: leavesData, refetch: refetchLeaves } = useQuery({
     queryKey: ['my-leaves'],
     queryFn: () => leavesApi.myApplications(),
-    enabled: showLeaves,
+    enabled: screen === 'leaves',
   });
 
   const applyMutation = useMutation({
@@ -61,8 +74,8 @@ export default function MoreScreen() {
         reason: leaveForm.reason,
       }),
     onSuccess: () => {
-      Alert.alert('✅ Applied', 'Leave application submitted successfully.');
-      setShowApplyLeave(false);
+      Alert.alert('Applied', 'Leave application submitted successfully.');
+      setScreen('leaves');
       setLeaveForm({ startDate: '', endDate: '', reason: '' });
       qc.invalidateQueries({ queryKey: ['my-leaves'] });
     },
@@ -88,32 +101,66 @@ export default function MoreScreen() {
   const role = user?.primaryRole;
   const canApplyLeave = role === 'TEACHER' || role === 'ADMIN';
 
-  const menuItems: MenuItem[] = [
-    {
-      icon: 'megaphone-outline',
-      label: 'Announcements',
-      color: Colors.primary[500],
-      action: () => setShowAnn(true),
-    },
-    {
-      icon: 'notifications-outline',
-      label: `Notifications${unread > 0 ? ` (${unread})` : ''}`,
-      color: Colors.info,
-      action: () => setShowNotifications(true),
-    },
-    ...(canApplyLeave ? [{
-      icon: 'calendar-outline' as keyof typeof Ionicons.glyphMap,
-      label: 'Leave Applications',
-      color: Colors.warning,
-      action: () => setShowLeaves(true),
-    }] : []),
-    {
-      icon: 'log-out-outline',
-      label: 'Logout',
-      color: Colors.danger,
-      action: doLogout,
-    },
-  ];
+  // Role-based menu items
+  const roleMenuItems: MenuItem[] = [];
+
+  if (role === 'STUDENT') {
+    roleMenuItems.push(
+      { icon: 'book-outline', label: 'Library', subtitle: 'Browse & issued books', color: Colors.primary[500], action: () => setScreen('library') },
+      { icon: 'bus-outline', label: 'Transport', subtitle: 'Route & stop info', color: '#0ea5e9', action: () => setScreen('transport') },
+      { icon: 'calendar-outline', label: 'Timetable', subtitle: 'Class schedule', color: '#8b5cf6', action: () => setScreen('timetable') },
+      { icon: 'megaphone-outline', label: 'Announcements', subtitle: 'School notices', color: Colors.info, action: () => setScreen('announcements') },
+      { icon: 'notifications-outline', label: `Notifications${unread > 0 ? ` (${unread})` : ''}`, subtitle: 'Recent alerts', color: Colors.warning, action: () => setScreen('notifications') },
+    );
+  } else if (role === 'TEACHER') {
+    roleMenuItems.push(
+      { icon: 'document-text-outline', label: 'Exams & Marks', subtitle: 'Enter student marks', color: '#7c3aed', action: () => setScreen('teacherExams') },
+      { icon: 'people-outline', label: 'My Students', subtitle: 'View student profiles', color: '#059669', action: () => setScreen('teacherStudents') },
+      { icon: 'book-outline', label: 'Library', subtitle: 'Browse books', color: Colors.primary[500], action: () => setScreen('library') },
+      { icon: 'megaphone-outline', label: 'Announcements', subtitle: 'School notices', color: Colors.info, action: () => setScreen('announcements') },
+      { icon: 'calendar-outline', label: 'Leave Applications', subtitle: 'Apply & track leaves', color: Colors.warning, action: () => setScreen('leaves') },
+    );
+  } else if (role === 'PARENT') {
+    roleMenuItems.push(
+      { icon: 'book-outline', label: "Child's Homework", subtitle: 'Track assignments', color: '#d97706', action: () => setScreen('parentHomework') },
+      { icon: 'megaphone-outline', label: 'Announcements', subtitle: 'School notices', color: Colors.info, action: () => setScreen('announcements') },
+      { icon: 'bus-outline', label: 'Transport Info', subtitle: "Child's route & stop", color: '#0ea5e9', action: () => setScreen('transport') },
+      { icon: 'notifications-outline', label: `Notifications${unread > 0 ? ` (${unread})` : ''}`, subtitle: 'Recent alerts', color: Colors.warning, action: () => setScreen('notifications') },
+    );
+  } else {
+    // ADMIN or fallback
+    roleMenuItems.push(
+      { icon: 'megaphone-outline', label: 'Announcements', subtitle: 'School notices', color: Colors.primary[500], action: () => setScreen('announcements') },
+      { icon: 'notifications-outline', label: `Notifications${unread > 0 ? ` (${unread})` : ''}`, subtitle: 'Recent alerts', color: Colors.info, action: () => setScreen('notifications') },
+      { icon: 'calendar-outline', label: 'Leave Applications', subtitle: 'Apply & track leaves', color: Colors.warning, action: () => setScreen('leaves') },
+    );
+  }
+
+  // Full-screen modal screens (Library, Transport, Timetable, etc.)
+  const fullScreenModal = (
+    screenKey: ModalScreen,
+    title: string,
+    component: React.ReactNode,
+    headerColor: string = Colors.primary[500]
+  ) => (
+    <Modal
+      visible={screen === screenKey}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={() => setScreen(null)}
+    >
+      <View style={[styles.fullModal, { backgroundColor: theme.background }]}>
+        <View style={[styles.fullModalHeader, { backgroundColor: headerColor }]}>
+          <TouchableOpacity onPress={() => setScreen(null)} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={22} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.fullModalTitle}>{title}</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={{ flex: 1 }}>{component}</View>
+      </View>
+    </Modal>
+  );
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={styles.content}>
@@ -131,7 +178,7 @@ export default function MoreScreen() {
 
       {/* Menu */}
       <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
-      {menuItems.map((item) => (
+      {roleMenuItems.map((item) => (
         <TouchableOpacity
           key={item.label}
           onPress={item.action}
@@ -141,12 +188,28 @@ export default function MoreScreen() {
           <View style={[styles.menuIcon, { backgroundColor: item.color + '22' }]}>
             <Ionicons name={item.icon} size={22} color={item.color} />
           </View>
-          <Text style={[styles.menuLabel, { color: item.color === Colors.danger ? Colors.danger : theme.text }]}>
-            {item.label}
-          </Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.menuLabel, { color: theme.text }]}>{item.label}</Text>
+            {item.subtitle && (
+              <Text style={[styles.menuSub, { color: theme.textMuted }]}>{item.subtitle}</Text>
+            )}
+          </View>
           <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
         </TouchableOpacity>
       ))}
+
+      {/* Logout */}
+      <TouchableOpacity
+        onPress={doLogout}
+        activeOpacity={0.8}
+        style={[styles.menuItem, styles.logoutItem, { backgroundColor: theme.card, borderColor: theme.border }]}
+      >
+        <View style={[styles.menuIcon, { backgroundColor: Colors.danger + '22' }]}>
+          <Ionicons name="log-out-outline" size={22} color={Colors.danger} />
+        </View>
+        <Text style={[styles.menuLabel, { color: Colors.danger }]}>Logout</Text>
+        <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
+      </TouchableOpacity>
 
       {/* App info */}
       <Card style={[styles.infoCard, { backgroundColor: theme.surface2 } as any]} padding={14}>
@@ -155,12 +218,20 @@ export default function MoreScreen() {
         </Text>
       </Card>
 
+      {/* Full-screen screens */}
+      {fullScreenModal('library', 'Library', <StudentLibrary />, Colors.primary[500])}
+      {fullScreenModal('transport', 'Transport', <StudentTransport />, '#0ea5e9')}
+      {fullScreenModal('timetable', 'Timetable', <StudentTimetable />, Colors.primary[600])}
+      {fullScreenModal('teacherExams', 'Exams & Marks', <TeacherExams />, '#7c3aed')}
+      {fullScreenModal('teacherStudents', 'My Students', <TeacherStudents />, '#059669')}
+      {fullScreenModal('parentHomework', "Child's Homework", <ParentHomework />, '#d97706')}
+
       {/* Announcements Modal */}
-      <Modal visible={showAnn} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={screen === 'announcements'} animationType="slide" presentationStyle="pageSheet">
         <View style={[styles.modal, { backgroundColor: theme.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>Announcements</Text>
-            <TouchableOpacity onPress={() => setShowAnn(false)}>
+            <TouchableOpacity onPress={() => setScreen(null)}>
               <Ionicons name="close" size={24} color={theme.text} />
             </TouchableOpacity>
           </View>
@@ -190,11 +261,11 @@ export default function MoreScreen() {
       </Modal>
 
       {/* Notifications Modal */}
-      <Modal visible={showNotifications} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={screen === 'notifications'} animationType="slide" presentationStyle="pageSheet">
         <View style={[styles.modal, { backgroundColor: theme.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>Notifications</Text>
-            <TouchableOpacity onPress={() => setShowNotifications(false)}>
+            <TouchableOpacity onPress={() => setScreen(null)}>
               <Ionicons name="close" size={24} color={theme.text} />
             </TouchableOpacity>
           </View>
@@ -224,15 +295,17 @@ export default function MoreScreen() {
       </Modal>
 
       {/* Leaves Modal */}
-      <Modal visible={showLeaves} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={screen === 'leaves'} animationType="slide" presentationStyle="pageSheet">
         <View style={[styles.modal, { backgroundColor: theme.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>Leave Applications</Text>
             <View style={styles.headerRight}>
-              <TouchableOpacity onPress={() => setShowApplyLeave(true)} style={[styles.addBtn, { backgroundColor: Colors.primary[500] }]}>
-                <Ionicons name="add" size={20} color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setShowLeaves(false)}>
+              {canApplyLeave && (
+                <TouchableOpacity onPress={() => setScreen('applyLeave')} style={[styles.addBtn, { backgroundColor: Colors.primary[500] }]}>
+                  <Ionicons name="add" size={20} color="#fff" />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => setScreen(null)}>
                 <Ionicons name="close" size={24} color={theme.text} />
               </TouchableOpacity>
             </View>
@@ -261,11 +334,11 @@ export default function MoreScreen() {
       </Modal>
 
       {/* Apply Leave Modal */}
-      <Modal visible={showApplyLeave} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={screen === 'applyLeave'} animationType="slide" presentationStyle="pageSheet">
         <View style={[styles.modal, { backgroundColor: theme.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>Apply for Leave</Text>
-            <TouchableOpacity onPress={() => setShowApplyLeave(false)}>
+            <TouchableOpacity onPress={() => setScreen('leaves')}>
               <Ionicons name="close" size={24} color={theme.text} />
             </TouchableOpacity>
           </View>
@@ -322,10 +395,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', padding: 16,
     borderRadius: 14, borderWidth: 1, gap: 14,
   },
+  logoutItem: { marginTop: 4 },
   menuIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  menuLabel: { flex: 1, fontSize: 15, fontWeight: '600' },
+  menuLabel: { fontSize: 15, fontWeight: '600' },
+  menuSub: { fontSize: 12, marginTop: 1 },
   infoCard: { marginTop: 10 },
   infoText: { fontSize: 11, textAlign: 'center', lineHeight: 18 },
+
+  // Full screen modal
+  fullModal: { flex: 1 },
+  fullModalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 14,
+    paddingTop: 50,
+  },
+  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  fullModalTitle: { color: '#fff', fontSize: 17, fontWeight: '700' },
+
+  // Sheet modals
   modal: { flex: 1 },
   modalHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

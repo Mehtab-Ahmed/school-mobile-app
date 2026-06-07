@@ -239,3 +239,44 @@ export interface TeacherDashboard {
   pendingHomework: number;
   todayClasses: ClassSection[];
 }
+
+export interface Book {
+  id: number;
+  title: string;
+  author: string;
+  isbn?: string;
+  subject?: { name: string };
+  availableCopies: number;
+  totalCopies: number;
+}
+
+export interface BookIssue {
+  id: number;
+  book: Book;
+  issuedAt: string;
+  dueDate: string;
+  returnedAt?: string;
+  status: 'ISSUED' | 'RETURNED' | 'OVERDUE';
+  finePaid?: boolean;
+}
+
+export interface RouteStop {
+  id: number;
+  name: string;
+  sequence: number;
+  morningPickupTime?: string;
+  eveningDropTime?: string;
+}
+
+export interface StudentTransport {
+  id: number;
+  route: {
+    id: number;
+    name: string;
+    vehicle?: { make: string; model: string; registrationNumber: string };
+  };
+  stop: RouteStop;
+  pickupType: string;
+  boardingStop?: RouteStop;
+  dropStop?: RouteStop;
+}
