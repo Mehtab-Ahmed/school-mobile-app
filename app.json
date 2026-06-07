@@ -34,8 +34,15 @@
           "image": "./assets/icon.png",
           "imageWidth": 120
         }
-      ]
+      ],
+      "expo-asset"
     ],
+    "updates": {
+      "enabled": false
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "experiments": {
       "typedRoutes": true
     }
