@@ -27,6 +27,14 @@ import TeacherStudents from '../teacher/TeacherStudents';
 import ParentHomework from '../parent/ParentHomework';
 import DriverPortal from '../driver/DriverPortal';
 import GamificationDashboard from './GamificationDashboard';
+import EventsScreen from './EventsScreen';
+import LMSScreen from './LMSScreen';
+import ChallengesScreen from './ChallengesScreen';
+import CertificatesScreen from './CertificatesScreen';
+import PTMScreen from './PTMScreen';
+import TeacherPerformanceScreen from '../teacher/TeacherPerformanceScreen';
+import AdminAtRiskScreen from '../admin/AdminAtRiskScreen';
+import FeeInstallmentsScreen from '../student/FeeInstallmentsScreen';
 
 type MenuItem = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -43,6 +51,8 @@ type ModalScreen =
   | 'parentHomework'
   | 'driverPortal'
   | 'gamification'
+  | 'events' | 'lms' | 'challenges' | 'certificates' | 'ptm'
+  | 'teacherPerf' | 'atRisk' | 'feeInstallments'
   | null;
 
 export default function MoreScreen() {
@@ -117,16 +127,25 @@ export default function MoreScreen() {
   } else if (role === 'STUDENT') {
     roleMenuItems.push(
       { icon: 'trophy-outline', label: '🏆 Leaderboard & Points', subtitle: 'Badges, points & rankings', color: '#f59e0b', action: () => setScreen('gamification') },
+      { icon: 'flash-outline', label: 'Challenges & XP', subtitle: 'Complete challenges, earn XP', color: '#ef4444', action: () => setScreen('challenges') },
+      { icon: 'calendar-outline', label: 'School Calendar', subtitle: 'Events, exams & holidays', color: '#06b6d4', action: () => setScreen('events') },
+      { icon: 'library-outline', label: 'Study Materials', subtitle: 'LMS resources & bookmarks', color: '#6366f1', action: () => setScreen('lms') },
+      { icon: 'ribbon-outline', label: 'My Certificates', subtitle: 'Awards & achievements', color: '#10b981', action: () => setScreen('certificates') },
+      { icon: 'wallet-outline', label: 'Fee Installments', subtitle: 'Payment schedule & status', color: '#8b5cf6', action: () => setScreen('feeInstallments') },
       { icon: 'book-outline', label: 'Library', subtitle: 'Browse & issued books', color: Colors.primary[500], action: () => setScreen('library') },
       { icon: 'location-outline', label: 'Live Bus Tracking', subtitle: 'Track your school bus in real-time', color: '#22c55e', action: () => setScreen('busTracking') },
       { icon: 'bus-outline', label: 'Transport Info', subtitle: 'Route & stop info', color: '#0ea5e9', action: () => setScreen('transport') },
-      { icon: 'calendar-outline', label: 'Timetable', subtitle: 'Class schedule', color: '#8b5cf6', action: () => setScreen('timetable') },
+      { icon: 'time-outline', label: 'Timetable', subtitle: 'Class schedule', color: '#8b5cf6', action: () => setScreen('timetable') },
       { icon: 'megaphone-outline', label: 'Announcements', subtitle: 'School notices', color: Colors.info, action: () => setScreen('announcements') },
       { icon: 'notifications-outline', label: `Notifications${unread > 0 ? ` (${unread})` : ''}`, subtitle: 'Recent alerts', color: Colors.warning, action: () => setScreen('notifications') },
     );
   } else if (role === 'TEACHER') {
     roleMenuItems.push(
       { icon: 'document-text-outline', label: 'Exams & Marks', subtitle: 'Enter student marks', color: '#7c3aed', action: () => setScreen('teacherExams') },
+      { icon: 'bar-chart-outline', label: 'My Performance', subtitle: 'Performance metrics & score', color: '#6366f1', action: () => setScreen('teacherPerf') },
+      { icon: 'people-outline', label: 'PTM Meetings', subtitle: 'Manage parent-teacher meetings', color: '#06b6d4', action: () => setScreen('ptm') },
+      { icon: 'calendar-outline', label: 'School Calendar', subtitle: 'Events, exams & holidays', color: '#f97316', action: () => setScreen('events') },
+      { icon: 'library-outline', label: 'Study Materials', subtitle: 'Upload LMS resources', color: '#8b5cf6', action: () => setScreen('lms') },
       { icon: 'trophy-outline', label: 'Leaderboard', subtitle: 'Class & school rankings', color: '#f59e0b', action: () => setScreen('gamification') },
       { icon: 'people-outline', label: 'My Students', subtitle: 'View student profiles', color: '#059669', action: () => setScreen('teacherStudents') },
       { icon: 'book-outline', label: 'Library', subtitle: 'Browse books', color: Colors.primary[500], action: () => setScreen('library') },
@@ -136,6 +155,9 @@ export default function MoreScreen() {
   } else if (role === 'PARENT') {
     roleMenuItems.push(
       { icon: 'book-outline', label: "Child's Homework", subtitle: 'Track assignments', color: '#d97706', action: () => setScreen('parentHomework') },
+      { icon: 'people-outline', label: 'PTM Meetings', subtitle: 'Request & track meetings', color: '#06b6d4', action: () => setScreen('ptm') },
+      { icon: 'ribbon-outline', label: "Child's Certificates", subtitle: 'Awards & achievements', color: '#10b981', action: () => setScreen('certificates') },
+      { icon: 'calendar-outline', label: 'School Calendar', subtitle: 'Events & school schedule', color: '#f97316', action: () => setScreen('events') },
       { icon: 'location-outline', label: 'Live Bus Tracking', subtitle: "Track child's school bus", color: '#22c55e', action: () => setScreen('busTracking') },
       { icon: 'megaphone-outline', label: 'Announcements', subtitle: 'School notices', color: Colors.info, action: () => setScreen('announcements') },
       { icon: 'bus-outline', label: 'Transport Info', subtitle: "Child's route & stop", color: '#0ea5e9', action: () => setScreen('transport') },
@@ -144,6 +166,10 @@ export default function MoreScreen() {
   } else {
     // ADMIN or fallback
     roleMenuItems.push(
+      { icon: 'warning-outline', label: 'At-Risk Students', subtitle: 'Academic intelligence flags', color: '#ef4444', action: () => setScreen('atRisk') },
+      { icon: 'bar-chart-outline', label: 'Teacher Performance', subtitle: 'Leaderboard & recalculate', color: '#6366f1', action: () => setScreen('teacherPerf') },
+      { icon: 'calendar-outline', label: 'School Calendar', subtitle: 'Manage events & holidays', color: '#06b6d4', action: () => setScreen('events') },
+      { icon: 'library-outline', label: 'Study Materials', subtitle: 'Manage LMS resources', color: '#8b5cf6', action: () => setScreen('lms') },
       { icon: 'megaphone-outline', label: 'Announcements', subtitle: 'School notices', color: Colors.primary[500], action: () => setScreen('announcements') },
       { icon: 'notifications-outline', label: `Notifications${unread > 0 ? ` (${unread})` : ''}`, subtitle: 'Recent alerts', color: Colors.info, action: () => setScreen('notifications') },
       { icon: 'calendar-outline', label: 'Leave Applications', subtitle: 'Apply & track leaves', color: Colors.warning, action: () => setScreen('leaves') },
@@ -242,6 +268,14 @@ export default function MoreScreen() {
       {fullScreenModal('parentHomework', "Child's Homework", <ParentHomework />, '#d97706')}
       {fullScreenModal('driverPortal', '🚌 Driver Portal', <DriverPortal />, '#0f4c2e')}
       {fullScreenModal('gamification', '🏆 Points & Leaderboard', <GamificationDashboard />, '#f59e0b')}
+      {fullScreenModal('events', '📅 School Calendar', <EventsScreen />, '#06b6d4')}
+      {fullScreenModal('lms', '📚 Study Materials', <LMSScreen />, '#6366f1')}
+      {fullScreenModal('challenges', '⚡ Challenges & XP', <ChallengesScreen />, '#ef4444')}
+      {fullScreenModal('certificates', '🎖️ Certificates', <CertificatesScreen />, '#10b981')}
+      {fullScreenModal('ptm', '🤝 PTM Meetings', <PTMScreen />, '#06b6d4')}
+      {fullScreenModal('teacherPerf', '📊 Teacher Performance', <TeacherPerformanceScreen />, '#6366f1')}
+      {fullScreenModal('atRisk', '⚠️ At-Risk Students', <AdminAtRiskScreen />, '#ef4444')}
+      {fullScreenModal('feeInstallments', '💳 Fee Installments', <FeeInstallmentsScreen />, '#8b5cf6')}
 
       {/* Announcements Modal */}
       <Modal visible={screen === 'announcements'} animationType="slide" presentationStyle="pageSheet">
