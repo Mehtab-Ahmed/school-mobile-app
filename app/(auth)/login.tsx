@@ -12,10 +12,11 @@ import { Button } from '../../src/components/ui/Button';
 import { Colors } from '../../src/theme/colors';
 
 const QUICK_LOGINS = [
-  { role: 'Admin', email: 'admin@school.com', password: 'School@1234', icon: '🏫', color: '#6366f1' },
+  { role: 'Admin', email: 'admin@school.com', password: 'Admin@1234', icon: '🏫', color: '#6366f1' },
   { role: 'Teacher', email: 'rajesh.kumar@school.com', password: 'School@1234', icon: '👨‍🏫', color: '#8b5cf6' },
-  { role: 'Student', email: 'arjun.sharma@school.com', password: 'School@1234', icon: '🎓', color: '#06b6d4' },
-  { role: 'Parent', email: 'parent1@school.com', password: 'School@1234', icon: '👪', color: '#10b981' },
+  { role: 'Student', email: 'arjun.singh@student.com', password: 'School@1234', icon: '🎓', color: '#06b6d4' },
+  { role: 'Parent', email: 'suresh.singh@parent.com', password: 'School@1234', icon: '👪', color: '#10b981' },
+  { role: 'Driver', email: 'ramkumar.yadav@driver.com', password: 'School@1234', icon: '🚌', color: '#f59e0b' },
 ];
 
 export default function LoginScreen() {
@@ -30,9 +31,21 @@ export default function LoginScreen() {
     mutationFn: ({ e, p }: { e: string; p: string }) => authApi.login(e, p),
     onSuccess: async (res) => {
       const d = res.data?.data;
-      if (d) {
-        await login(d.user, d.accessToken, d.refreshToken);
+      if (d?.accessToken) {
+        // Backend returns flat response — build AuthUser from flat fields
+        const user = {
+          userId: d.userId,
+          id: d.userId,
+          fullName: d.fullName,
+          email: d.email,
+          primaryRole: d.primaryRole,
+          roles: d.roles ?? [],
+          schoolId: d.schoolId,
+        };
+        await login(user, d.accessToken, d.refreshToken);
         router.replace('/(tabs)');
+      } else {
+        Alert.alert('Login Failed', 'Unexpected response from server.');
       }
     },
     onError: () => Alert.alert('Login Failed', 'Invalid credentials. Please try again.'),
@@ -143,7 +156,7 @@ const styles = StyleSheet.create({
   quickTitle: { fontSize: 11, fontWeight: '600', letterSpacing: 1, marginBottom: 14 },
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   quickBtn: {
-    flex: 1, minWidth: '44%', alignItems: 'center', paddingVertical: 14,
+    width: '30%', alignItems: 'center', paddingVertical: 14,
     borderRadius: 14, borderWidth: 1.5, gap: 6,
   },
   quickIcon: { fontSize: 24 },

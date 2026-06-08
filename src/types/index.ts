@@ -1,19 +1,28 @@
-export type UserRole = 'ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT';
+export type UserRole = 'ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT' | 'DRIVER';
 
 export interface AuthUser {
+  id?: number;
   userId: number;
   fullName: string;
   email: string;
   primaryRole: UserRole;
   roles: UserRole[];
-  schoolId?: string;
+  schoolId?: number;
 }
 
+/** Backend returns a flat response — no nested user object */
 export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
   tokenType: string;
-  user: AuthUser;
+  // Flat user fields (same level as tokens)
+  userId: number;
+  schoolId: number;
+  email: string;
+  fullName: string;
+  primaryRole: UserRole;
+  roles: UserRole[];
+  forcePasswordChange: boolean;
 }
 
 export interface ApiResponse<T> {
