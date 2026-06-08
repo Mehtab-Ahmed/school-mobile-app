@@ -26,6 +26,7 @@ import TeacherExams from '../teacher/TeacherExams';
 import TeacherStudents from '../teacher/TeacherStudents';
 import ParentHomework from '../parent/ParentHomework';
 import DriverPortal from '../driver/DriverPortal';
+import GamificationDashboard from './GamificationDashboard';
 
 type MenuItem = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -41,6 +42,7 @@ type ModalScreen =
   | 'teacherExams' | 'teacherStudents'
   | 'parentHomework'
   | 'driverPortal'
+  | 'gamification'
   | null;
 
 export default function MoreScreen() {
@@ -114,6 +116,7 @@ export default function MoreScreen() {
     );
   } else if (role === 'STUDENT') {
     roleMenuItems.push(
+      { icon: 'trophy-outline', label: '🏆 Leaderboard & Points', subtitle: 'Badges, points & rankings', color: '#f59e0b', action: () => setScreen('gamification') },
       { icon: 'book-outline', label: 'Library', subtitle: 'Browse & issued books', color: Colors.primary[500], action: () => setScreen('library') },
       { icon: 'location-outline', label: 'Live Bus Tracking', subtitle: 'Track your school bus in real-time', color: '#22c55e', action: () => setScreen('busTracking') },
       { icon: 'bus-outline', label: 'Transport Info', subtitle: 'Route & stop info', color: '#0ea5e9', action: () => setScreen('transport') },
@@ -124,6 +127,7 @@ export default function MoreScreen() {
   } else if (role === 'TEACHER') {
     roleMenuItems.push(
       { icon: 'document-text-outline', label: 'Exams & Marks', subtitle: 'Enter student marks', color: '#7c3aed', action: () => setScreen('teacherExams') },
+      { icon: 'trophy-outline', label: 'Leaderboard', subtitle: 'Class & school rankings', color: '#f59e0b', action: () => setScreen('gamification') },
       { icon: 'people-outline', label: 'My Students', subtitle: 'View student profiles', color: '#059669', action: () => setScreen('teacherStudents') },
       { icon: 'book-outline', label: 'Library', subtitle: 'Browse books', color: Colors.primary[500], action: () => setScreen('library') },
       { icon: 'megaphone-outline', label: 'Announcements', subtitle: 'School notices', color: Colors.info, action: () => setScreen('announcements') },
@@ -237,6 +241,7 @@ export default function MoreScreen() {
       {fullScreenModal('teacherStudents', 'My Students', <TeacherStudents />, '#059669')}
       {fullScreenModal('parentHomework', "Child's Homework", <ParentHomework />, '#d97706')}
       {fullScreenModal('driverPortal', '🚌 Driver Portal', <DriverPortal />, '#0f4c2e')}
+      {fullScreenModal('gamification', '🏆 Points & Leaderboard', <GamificationDashboard />, '#f59e0b')}
 
       {/* Announcements Modal */}
       <Modal visible={screen === 'announcements'} animationType="slide" presentationStyle="pageSheet">

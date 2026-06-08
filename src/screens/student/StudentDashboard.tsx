@@ -9,6 +9,7 @@ import { attendanceApi } from '../../api/attendance';
 import { feesApi } from '../../api/fees';
 import { homeworkApi } from '../../api/homework';
 import { communicationApi } from '../../api/communication';
+import { gamificationApi } from '../../api/gamification';
 import { StatCard } from '../../components/ui/StatCard';
 import { Card } from '../../components/ui/Card';
 import { Avatar } from '../../components/ui/Avatar';
@@ -57,11 +58,19 @@ export default function StudentDashboard() {
     queryFn: () => communicationApi.announcements('STUDENTS'),
   });
 
+  const { data: gamData } = useQuery({
+    queryKey: ['gamification', 'my'],
+    queryFn: () => gamificationApi.getMy().then(r => r.data?.data),
+    enabled: !!user,
+  });
+
   const summary = attData?.data?.data;
   const fees = feeData?.data?.data;
   const homework = hwData?.data?.data ?? [];
   const announcements = annData?.data?.data ?? [];
   const attPct = summary?.attendancePercentage ?? 0;
+  const gamSummary = gamData?.summary;
+  const gamBadges = gamData?.badges ?? [];
 
   return (
     <ScrollView
@@ -121,6 +130,26 @@ export default function StudentDashboard() {
           icon="megaphone"
           iconColor={Colors.info}
         />
+      </View>
+
+      {/* Gamification mini-card */}
+      <View style={[styles.gamCard, { backgroundColor: '#f59e0b' }]}>
+        <View>
+          <Text style={styles.gamLabel}>My Points 🏆</Text>
+          <Text style={styles.gamPts}>{gamSummary?.totalPoints ?? 0}</Text>
+          {gamSummary?.streakDays ? (
+            <Text style={styles.gamStreak}>🔥 {gamSummary.streakDays}-day streak</Text>
+          ) : null}
+        </View>
+        <View style={styles.gamRight}>
+          {gamSummary?.classRank && (
+            <View style={styles.gamRankPill}>
+              <Text style={styles.gamRankNum}>#{gamSummary.classRank}</Text>
+              <Text style={styles.gamRankLbl}>Class</Text>
+            </View>
+          )}
+          <Text style={styles.gamBadges}>🏅 {gamBadges.length} badges</Text>
+        </View>
       </View>
 
       {/* Attendance progress */}
@@ -243,4 +272,19 @@ const styles = StyleSheet.create({
   annDate: { fontSize: 11 },
   annTitle: { fontSize: 14, fontWeight: '600' },
   annContent: { fontSize: 13, lineHeight: 18 },
+  gamCard: {
+    borderRadius: 18, padding: 18, flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'space-between', marginTop: 16,
+  },
+  gamLabel:    { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '600' },
+  gamPts:      { color: '#fff', fontSize: 36, fontWeight: '900' },
+  gamStreak:   { color: 'rgba(255,255,255,0.9)', fontSize: 12 },
+  gamRight:    { alignItems: 'flex-end', gap: 8 },
+  gamRankPill: {
+    backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 4, alignItems: 'center',
+  },
+  gamRankNum:  { color: '#fff', fontSize: 15, fontWeight: '800' },
+  gamRankLbl:  { color: 'rgba(255,255,255,0.8)', fontSize: 10 },
+  gamBadges:   { color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: '600' },
 });

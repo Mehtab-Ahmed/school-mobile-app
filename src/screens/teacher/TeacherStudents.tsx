@@ -10,6 +10,7 @@ import { studentsApi } from '../../api/students';
 import { academicApi } from '../../api/academic';
 import { attendanceApi } from '../../api/attendance';
 import { feesApi } from '../../api/fees';
+import BehaviorRemarkScreen from './BehaviorRemarkScreen';
 import { Avatar } from '../../components/ui/Avatar';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -23,6 +24,7 @@ export default function TeacherStudents() {
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [showRemark, setShowRemark] = useState(false);
 
   const { data: classesData } = useQuery({
     queryKey: ['class-sections'],
@@ -263,10 +265,44 @@ export default function TeacherStudents() {
                   </Card>
                 </>
               )}
+
+              {/* Behavior Remark Button */}
+              <TouchableOpacity
+                onPress={() => setShowRemark(true)}
+                style={{
+                  backgroundColor: '#f59e0b18', borderColor: '#f59e0b44',
+                  borderWidth: 1.5, borderRadius: 14, padding: 14,
+                  flexDirection: 'row', alignItems: 'center', gap: 10,
+                }}
+              >
+                <Text style={{ fontSize: 22 }}>💬</Text>
+                <View>
+                  <Text style={[{ fontWeight: '700', fontSize: 15 }, { color: '#f59e0b' }]}>
+                    Add Behavior Remark
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#9ca3af' }}>
+                    Award points or note behavior
+                  </Text>
+                </View>
+              </TouchableOpacity>
             </ScrollView>
           )}
         </View>
       </Modal>
+
+      {/* Behavior Remark Modal */}
+      {selectedStudent && (
+        <Modal visible={showRemark} animationType="slide" presentationStyle="pageSheet"
+          onRequestClose={() => setShowRemark(false)}>
+          <View style={{ flex: 1 }}>
+            <BehaviorRemarkScreen
+              studentId={selectedStudent.id}
+              studentName={`${selectedStudent.user.firstName} ${selectedStudent.user.lastName}`}
+              onClose={() => setShowRemark(false)}
+            />
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
