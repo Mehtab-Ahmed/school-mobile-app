@@ -43,6 +43,11 @@ const PARENT_TABS: TabConfig[] = [
   { name: 'more', title: 'More', icon: 'menu-outline', focusedIcon: 'menu' },
 ];
 
+const DRIVER_TABS: TabConfig[] = [
+  { name: 'index', title: 'Dashboard', icon: 'grid-outline', focusedIcon: 'grid' },
+  { name: 'more', title: 'My Route', icon: 'bus-outline', focusedIcon: 'bus' },
+];
+
 // All possible tab names
 const ALL_TABS = ['index', 'students', 'teachers', 'fees', 'attendance', 'homework', 'timetable', 'exams', 'more'];
 
@@ -58,6 +63,7 @@ export default function TabsLayout() {
     role === 'ADMIN' ? ADMIN_TABS :
     role === 'TEACHER' ? TEACHER_TABS :
     role === 'PARENT' ? PARENT_TABS :
+    role === 'DRIVER' ? DRIVER_TABS :
     STUDENT_TABS;
 
   const activeTabNames = new Set(tabs.map((t) => t.name));

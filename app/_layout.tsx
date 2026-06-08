@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '../src/store/authStore';
+import { usePushNotifications } from '../src/hooks/usePushNotifications';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -12,19 +13,30 @@ const queryClient = new QueryClient({
   },
 });
 
-export default function RootLayout() {
+function AppContent() {
   const hydrate = useAuthStore((s) => s.hydrate);
   const scheme = useColorScheme();
+
+  usePushNotifications();
 
   useEffect(() => {
     hydrate();
   }, []);
 
   return (
+    <>
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <Stack screenOptions={{ headerShown: false }} />
+    </>
+  );
+}
+
+export default function RootLayout() {
+
+  return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
-        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-        <Stack screenOptions={{ headerShown: false }} />
+        <AppContent />
       </QueryClientProvider>
     </GestureHandlerRootView>
   );

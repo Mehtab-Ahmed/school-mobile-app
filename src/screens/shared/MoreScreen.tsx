@@ -21,9 +21,11 @@ import { Colors } from '../../theme/colors';
 import StudentLibrary from '../student/StudentLibrary';
 import StudentTransport from '../student/StudentTransport';
 import StudentTimetable from '../student/StudentTimetable';
+import StudentBusTracking from '../student/StudentBusTracking';
 import TeacherExams from '../teacher/TeacherExams';
 import TeacherStudents from '../teacher/TeacherStudents';
 import ParentHomework from '../parent/ParentHomework';
+import DriverPortal from '../driver/DriverPortal';
 
 type MenuItem = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -35,9 +37,10 @@ type MenuItem = {
 
 type ModalScreen =
   | 'announcements' | 'notifications' | 'leaves' | 'applyLeave'
-  | 'library' | 'transport' | 'timetable'
+  | 'library' | 'transport' | 'timetable' | 'busTracking'
   | 'teacherExams' | 'teacherStudents'
   | 'parentHomework'
+  | 'driverPortal'
   | null;
 
 export default function MoreScreen() {
@@ -104,10 +107,16 @@ export default function MoreScreen() {
   // Role-based menu items
   const roleMenuItems: MenuItem[] = [];
 
-  if (role === 'STUDENT') {
+  if (role === 'DRIVER') {
+    roleMenuItems.push(
+      { icon: 'bus', label: 'My Route & Trip', subtitle: 'Start trip, mark boarding/alighting', color: '#22c55e', action: () => setScreen('driverPortal') },
+      { icon: 'notifications-outline', label: `Notifications${unread > 0 ? ` (${unread})` : ''}`, subtitle: 'Recent alerts', color: Colors.warning, action: () => setScreen('notifications') },
+    );
+  } else if (role === 'STUDENT') {
     roleMenuItems.push(
       { icon: 'book-outline', label: 'Library', subtitle: 'Browse & issued books', color: Colors.primary[500], action: () => setScreen('library') },
-      { icon: 'bus-outline', label: 'Transport', subtitle: 'Route & stop info', color: '#0ea5e9', action: () => setScreen('transport') },
+      { icon: 'location-outline', label: 'Live Bus Tracking', subtitle: 'Track your school bus in real-time', color: '#22c55e', action: () => setScreen('busTracking') },
+      { icon: 'bus-outline', label: 'Transport Info', subtitle: 'Route & stop info', color: '#0ea5e9', action: () => setScreen('transport') },
       { icon: 'calendar-outline', label: 'Timetable', subtitle: 'Class schedule', color: '#8b5cf6', action: () => setScreen('timetable') },
       { icon: 'megaphone-outline', label: 'Announcements', subtitle: 'School notices', color: Colors.info, action: () => setScreen('announcements') },
       { icon: 'notifications-outline', label: `Notifications${unread > 0 ? ` (${unread})` : ''}`, subtitle: 'Recent alerts', color: Colors.warning, action: () => setScreen('notifications') },
@@ -123,6 +132,7 @@ export default function MoreScreen() {
   } else if (role === 'PARENT') {
     roleMenuItems.push(
       { icon: 'book-outline', label: "Child's Homework", subtitle: 'Track assignments', color: '#d97706', action: () => setScreen('parentHomework') },
+      { icon: 'location-outline', label: 'Live Bus Tracking', subtitle: "Track child's school bus", color: '#22c55e', action: () => setScreen('busTracking') },
       { icon: 'megaphone-outline', label: 'Announcements', subtitle: 'School notices', color: Colors.info, action: () => setScreen('announcements') },
       { icon: 'bus-outline', label: 'Transport Info', subtitle: "Child's route & stop", color: '#0ea5e9', action: () => setScreen('transport') },
       { icon: 'notifications-outline', label: `Notifications${unread > 0 ? ` (${unread})` : ''}`, subtitle: 'Recent alerts', color: Colors.warning, action: () => setScreen('notifications') },
@@ -220,11 +230,13 @@ export default function MoreScreen() {
 
       {/* Full-screen screens */}
       {fullScreenModal('library', 'Library', <StudentLibrary />, Colors.primary[500])}
-      {fullScreenModal('transport', 'Transport', <StudentTransport />, '#0ea5e9')}
+      {fullScreenModal('transport', 'Transport Info', <StudentTransport />, '#0ea5e9')}
       {fullScreenModal('timetable', 'Timetable', <StudentTimetable />, Colors.primary[600])}
+      {fullScreenModal('busTracking', '🚌 Live Bus Tracking', <StudentBusTracking />, '#0f4c2e')}
       {fullScreenModal('teacherExams', 'Exams & Marks', <TeacherExams />, '#7c3aed')}
       {fullScreenModal('teacherStudents', 'My Students', <TeacherStudents />, '#059669')}
       {fullScreenModal('parentHomework', "Child's Homework", <ParentHomework />, '#d97706')}
+      {fullScreenModal('driverPortal', '🚌 Driver Portal', <DriverPortal />, '#0f4c2e')}
 
       {/* Announcements Modal */}
       <Modal visible={screen === 'announcements'} animationType="slide" presentationStyle="pageSheet">
