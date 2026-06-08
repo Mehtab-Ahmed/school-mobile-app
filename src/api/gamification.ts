@@ -59,6 +59,19 @@ export interface LeaderboardEntry {
   schoolRank?: number;
 }
 
+export interface AcademicLeaderboardEntry {
+  rank: number;
+  studentId: number;
+  studentName: string;
+  admissionNumber: string;
+  averagePercentage: number;
+  grade: string;
+  totalMarksObtained: number;
+  totalMaxMarks: number;
+  subjectsCount: number;
+  pointsRank?: number;
+}
+
 export interface MyGamification {
   summary: PointSummary;
   badges: Badge[];
@@ -107,6 +120,15 @@ export const gamificationApi = {
   // Manual award (admin/teacher)
   awardPoints: (studentId: number, points: number, category: string, description: string) =>
     api.post('/gamification/points/award', { studentId, points, category, description }),
+
+  // Academic leaderboard (exam marks based)
+  getAcademicClassLeaderboard: (classSectionId: number) =>
+    api.get<ApiResponse<AcademicLeaderboardEntry[]>>(
+      `/gamification/leaderboard/academic/class/${classSectionId}`),
+
+  getAcademicSchoolLeaderboard: (limit = 50) =>
+    api.get<ApiResponse<AcademicLeaderboardEntry[]>>(
+      `/gamification/leaderboard/academic/school?limit=${limit}`),
 };
 
 // ── Behavior API ───────────────────────────────────────────────────────────
