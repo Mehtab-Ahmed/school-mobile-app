@@ -1,56 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, useColorScheme, Dimensions, Platform,
+  ActivityIndicator, useColorScheme, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import axios from '../../api/axios';
 import { Colors } from '../../theme/colors';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../store/authStore';
-
-const { width } = Dimensions.get('window');
-
-// ── API ───────────────────────────────────────────────────────────────────────
-
-const trackingApi = {
-  myTransport: (studentId: number) => axios.get(`/transport/student/${studentId}`),
-  liveLocation: (routeId: number) => axios.get(`/transport/routes/${routeId}/live-location`),
-  routeStops: (routeId: number) => axios.get(`/transport/routes/${routeId}/stops`),
-};
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type LiveLocation = {
-  routeId: number;
-  routeName: string;
-  tripActive: boolean;
-  latitude?: number;
-  longitude?: number;
-  locationUpdatedAt?: string;
-  tripStartedAt?: string;
-};
-
-type Stop = {
-  id: number;
-  stopName: string;
-  sequence: number;
-  morningTime?: string;
-};
-
-type StudentTransport = {
-  id: number;
-  route: { id: number; name: string; routeCode: string };
-  stop: { stopName: string; sequence: number };
-  lastBoardedAt?: string;
-  lastAlightedAt?: string;
-  lastBoardedStopId?: number;
-  lastAlightedStopId?: number;
-};
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
+import { transportGpsApi } from '../../api/transportGps';
+import { getAccessibleStudents, studentDisplayName } from '../../utils/studentAccess';
 
 function formatTime(dateStr?: string): string {
   if (!dateStr) return '--';
@@ -63,81 +24,50 @@ function formatTime(dateStr?: string): string {
 
 function getTimeSince(dateStr?: string): string {
   if (!dateStr) return 'Unknown';
-  try {
-    const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-    if (seconds < 60) return `${seconds}s ago`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    return `${Math.floor(seconds / 3600)}h ago`;
-  } catch {
-    return 'Unknown';
-  }
+  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  return `${Math.floor(seconds / 3600)}h ago`;
 }
-
-// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function StudentBusTracking() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? Colors.dark : Colors.light;
   const { user } = useAuthStore();
+  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
 
-  const [routeId, setRouteId] = useState<number | null>(null);
-  const [studentTransport, setStudentTransport] = useState<StudentTransport | null>(null);
-  const [refreshCount, setRefreshCount] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Get student transport assignment
-  const { data: transportData, isLoading: transportLoading } = useQuery({
-    queryKey: ['student-transport', user?.id],
-    queryFn: () => trackingApi.myTransport(user?.id ?? 0),
-    enabled: !!user?.id,
+  const students = useQuery({
+    queryKey: ['transport-accessible-students', user?.userId],
+    queryFn: () => getAccessibleStudents(user),
+    enabled: !!user,
   });
 
+  const accessibleStudents = students.data ?? [];
   useEffect(() => {
-    const transport = transportData?.data?.data;
-    if (transport) {
-      setStudentTransport(transport);
-      setRouteId(transport.route?.id);
+    if (!selectedStudentId && accessibleStudents.length > 0) {
+      setSelectedStudentId(accessibleStudents[0].id);
     }
-  }, [transportData]);
+  }, [accessibleStudents, selectedStudentId]);
 
-  // Live location polling (every 15s when trip active)
-  const { data: locationData, isLoading: locationLoading, refetch: refetchLocation } = useQuery({
-    queryKey: ['live-location', routeId, refreshCount],
-    queryFn: () => trackingApi.liveLocation(routeId!),
-    enabled: !!routeId,
-    staleTime: 14000,
+  const transport = useQuery({
+    queryKey: ['transport-child', selectedStudentId],
+    queryFn: () => transportGpsApi.child(selectedStudentId!),
+    enabled: !!selectedStudentId,
+    refetchInterval: (query) => query.state.data?.data?.data?.tripActive ? 15000 : false,
   });
 
-  const { data: stopsData } = useQuery({
-    queryKey: ['route-stops', routeId],
-    queryFn: () => trackingApi.routeStops(routeId!),
-    enabled: !!routeId,
+  const stops = useQuery({
+    queryKey: ['transport-route-stops', transport.data?.data?.data?.routeId],
+    queryFn: () => transportGpsApi.routeStops(transport.data!.data.data.routeId!),
+    enabled: !!transport.data?.data?.data?.routeId,
   });
 
-  const liveLocation: LiveLocation | null = locationData?.data?.data ?? null;
-  const stops: Stop[] = stopsData?.data?.data ?? [];
+  const data = transport.data?.data?.data;
+  const routeStops = stops.data?.data?.data ?? [];
+  const refreshing = students.isRefetching || transport.isRefetching || stops.isRefetching;
+  const refresh = () => { students.refetch(); transport.refetch(); stops.refetch(); };
 
-  // Auto-refresh every 15s when trip is active
-  useEffect(() => {
-    if (liveLocation?.tripActive) {
-      timerRef.current = setInterval(() => {
-        setRefreshCount((c) => c + 1);
-      }, 15000);
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [liveLocation?.tripActive]);
-
-  const isBoarded = studentTransport?.lastBoardedStopId && !studentTransport?.lastAlightedStopId;
-  const isAlighted = !!studentTransport?.lastAlightedStopId;
-
-  if (transportLoading) {
+  if (students.isLoading || transport.isLoading) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
         <ActivityIndicator size="large" color={Colors.primary[500]} />
@@ -146,166 +76,107 @@ export default function StudentBusTracking() {
     );
   }
 
-  if (!studentTransport) {
+  if (!selectedStudentId || !data) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Ionicons name="bus-outline" size={64} color={theme.textMuted} />
-        <Text style={[styles.emptyTitle, { color: theme.text }]}>No Transport Assigned</Text>
-        <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-          You are not currently assigned to any school bus route. Contact admin to get assigned.
-        </Text>
+        <EmptyState icon="bus-outline" title="No Transport Assigned" subtitle="No route was found for this student." />
       </View>
     );
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={styles.content}>
-
-      {/* Status Banner */}
-      {liveLocation && (
-        <View style={[
-          styles.statusBanner,
-          { backgroundColor: liveLocation.tripActive ? '#0f4c2e' : '#374151' }
-        ]}>
-          <View style={[styles.pulseDot, { backgroundColor: liveLocation.tripActive ? '#22c55e' : '#6b7280' }]} />
-          <Text style={styles.bannerText}>
-            {liveLocation.tripActive ? '🚌 Bus is on the way!' : '🅿️ Bus has not started yet'}
-          </Text>
-          {liveLocation.tripActive && (
-            <TouchableOpacity onPress={() => refetchLocation()} style={styles.refreshBtn}>
-              <Ionicons name="refresh" size={16} color="#86efac" />
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.primary[500]} />}
+    >
+      {accessibleStudents.length > 1 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.switcher}>
+          {accessibleStudents.map((s) => (
+            <TouchableOpacity
+              key={s.id}
+              onPress={() => setSelectedStudentId(s.id)}
+              style={[styles.chip, { backgroundColor: selectedStudentId === s.id ? Colors.primary[500] : theme.card, borderColor: selectedStudentId === s.id ? Colors.primary[500] : theme.border }]}
+            >
+              <Text style={[styles.chipText, { color: selectedStudentId === s.id ? '#fff' : theme.text }]}>{studentDisplayName(s)}</Text>
             </TouchableOpacity>
-          )}
-        </View>
+          ))}
+        </ScrollView>
       )}
 
-      {/* My Transport Card */}
+      <View style={[styles.statusBanner, { backgroundColor: data.tripActive ? '#0f4c2e' : '#374151' }]}>
+        <View style={[styles.pulseDot, { backgroundColor: data.tripActive ? '#22c55e' : '#6b7280' }]} />
+        <Text style={styles.bannerText}>
+          {data.tripActive ? 'Bus is on the way' : 'Bus has not started yet'}
+        </Text>
+        <TouchableOpacity onPress={() => transport.refetch()} style={styles.refreshBtn}>
+          <Ionicons name="refresh" size={16} color="#86efac" />
+        </TouchableOpacity>
+      </View>
+
       <Card style={styles.myTransportCard}>
-        <Text style={[styles.cardTitle, { color: theme.text }]}>My Bus Route</Text>
+        <Text style={[styles.cardTitle, { color: theme.text }]}>Bus Route</Text>
         <View style={styles.routeInfoRow}>
           <View style={[styles.routeIcon, { backgroundColor: Colors.primary[500] + '22' }]}>
             <Ionicons name="bus" size={24} color={Colors.primary[500]} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.routeName, { color: theme.text }]}>
-              {studentTransport.route?.name ?? 'Unknown Route'}
-            </Text>
-            <Text style={[styles.routeCode, { color: theme.textSecondary }]}>
-              Code: {studentTransport.route?.routeCode}
-            </Text>
+            <Text style={[styles.routeName, { color: theme.text }]}>{data.routeName ?? 'Unknown Route'}</Text>
+            <Text style={[styles.routeCode, { color: theme.textSecondary }]}>Code: {data.routeCode ?? '--'}</Text>
           </View>
+          <Badge label={data.status ?? (data.tripActive ? 'LIVE' : 'WAITING')} variant={data.tripActive ? 'success' : 'info'} small />
         </View>
         <View style={[styles.stopInfo, { backgroundColor: theme.surface2 }]}>
           <Ionicons name="location" size={16} color={Colors.primary[500]} />
-          <Text style={[styles.stopText, { color: theme.text }]}>
-            Your Stop: <Text style={{ fontWeight: '700' }}>{studentTransport.stop?.stopName}</Text>
-          </Text>
+          <Text style={[styles.stopText, { color: theme.text }]}>Stop: <Text style={{ fontWeight: '700' }}>{data.stopName ?? '--'}</Text></Text>
         </View>
       </Card>
 
-      {/* Today's Status */}
       <Card>
-        <Text style={[styles.cardTitle, { color: theme.text }]}>Today's Status</Text>
+        <Text style={[styles.cardTitle, { color: theme.text }]}>Today's Pickup / Drop</Text>
         <View style={styles.statusGrid}>
-          <View style={[styles.statusBox, { backgroundColor: isBoarded ? '#dcfce7' : theme.surface2 }]}>
-            <Ionicons name="enter-outline" size={22} color={isBoarded ? '#22c55e' : theme.textMuted} />
-            <Text style={[styles.statusBoxLabel, { color: isBoarded ? '#166534' : theme.textMuted }]}>Boarded</Text>
-            {studentTransport.lastBoardedAt && (
-              <Text style={[styles.statusTime, { color: '#166534' }]}>{formatTime(studentTransport.lastBoardedAt)}</Text>
-            )}
+          <View style={[styles.statusBox, { backgroundColor: data.lastBoardedAt ? '#dcfce7' : theme.surface2 }]}>
+            <Ionicons name="enter-outline" size={22} color={data.lastBoardedAt ? '#22c55e' : theme.textMuted} />
+            <Text style={[styles.statusBoxLabel, { color: data.lastBoardedAt ? '#166534' : theme.textMuted }]}>Boarded</Text>
+            <Text style={[styles.statusTime, { color: data.lastBoardedAt ? '#166534' : theme.textMuted }]}>{formatTime(data.lastBoardedAt)}</Text>
           </View>
-          <View style={[styles.statusBox, { backgroundColor: isAlighted ? '#fef3c7' : theme.surface2 }]}>
-            <Ionicons name="exit-outline" size={22} color={isAlighted ? '#d97706' : theme.textMuted} />
-            <Text style={[styles.statusBoxLabel, { color: isAlighted ? '#92400e' : theme.textMuted }]}>Alighted</Text>
-            {studentTransport.lastAlightedAt && (
-              <Text style={[styles.statusTime, { color: '#92400e' }]}>{formatTime(studentTransport.lastAlightedAt)}</Text>
-            )}
+          <View style={[styles.statusBox, { backgroundColor: data.lastAlightedAt ? '#fef3c7' : theme.surface2 }]}>
+            <Ionicons name="exit-outline" size={22} color={data.lastAlightedAt ? '#d97706' : theme.textMuted} />
+            <Text style={[styles.statusBoxLabel, { color: data.lastAlightedAt ? '#92400e' : theme.textMuted }]}>Dropped</Text>
+            <Text style={[styles.statusTime, { color: data.lastAlightedAt ? '#92400e' : theme.textMuted }]}>{formatTime(data.lastAlightedAt)}</Text>
           </View>
         </View>
-        {!isBoarded && !isAlighted && (
-          <Text style={[styles.waitingText, { color: theme.textMuted }]}>
-            Waiting for your boarding to be marked by the driver.
-          </Text>
-        )}
       </Card>
 
-      {/* Live Bus Location */}
-      {liveLocation && liveLocation.tripActive && liveLocation.latitude && (
+      {data.tripActive && data.latitude && data.longitude && (
         <Card>
           <View style={styles.locationHeader}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>Live Bus Location</Text>
-            <Text style={[styles.updatedText, { color: theme.textMuted }]}>
-              Updated {getTimeSince(liveLocation.locationUpdatedAt)}
-            </Text>
+            <Text style={[styles.updatedText, { color: theme.textMuted }]}>Updated {getTimeSince(data.locationUpdatedAt)}</Text>
           </View>
-          {/* Map placeholder — full GPS map would require react-native-maps (not in SDK 52 deps) */}
-          <View style={[styles.mapPlaceholder, { backgroundColor: '#dbeafe' }]}>
+          <View style={styles.mapPlaceholder}>
             <Ionicons name="map-outline" size={48} color="#3b82f6" />
-            <Text style={[styles.mapCoordsText, { color: '#1e3a5f' }]}>
-              📍 {Number(liveLocation.latitude).toFixed(4)}, {Number(liveLocation.longitude).toFixed(4)}
-            </Text>
-            <Text style={[styles.mapHint, { color: '#3b82f6' }]}>
-              Live GPS coordinates of bus
-            </Text>
+            <Text style={styles.mapCoordsText}>{Number(data.latitude).toFixed(4)}, {Number(data.longitude).toFixed(4)}</Text>
+            <Text style={styles.mapHint}>Live GPS coordinates</Text>
           </View>
-          {liveLocation.tripStartedAt && (
-            <Text style={[styles.tripStarted, { color: theme.textSecondary }]}>
-              Trip started at {formatTime(liveLocation.tripStartedAt)}
-            </Text>
-          )}
         </Card>
       )}
 
-      {/* Route Stops Timeline */}
-      {stops.length > 0 && (
+      {routeStops.length > 0 && (
         <Card>
           <Text style={[styles.cardTitle, { color: theme.text }]}>Route Stops</Text>
-          <View style={{ gap: 0 }}>
-            {stops.map((stop, idx) => {
-              const isMyStop = stop.id === studentTransport.stop?.sequence;
-              const isPast = idx < (studentTransport.stop?.sequence ?? 0) - 1;
-              return (
-                <View key={stop.id} style={styles.stopRow}>
-                  <View style={styles.stopTimeline}>
-                    <View style={[
-                      styles.stopDot,
-                      { backgroundColor: isMyStop ? Colors.primary[500] : isPast ? '#22c55e' : theme.border }
-                    ]}>
-                      {isMyStop && <Ionicons name="person" size={10} color="#fff" />}
-                    </View>
-                    {idx < stops.length - 1 && (
-                      <View style={[styles.stopLine, { backgroundColor: theme.border }]} />
-                    )}
-                  </View>
-                  <View style={{ flex: 1, paddingBottom: 16 }}>
-                    <Text style={[
-                      styles.stopName,
-                      { color: isMyStop ? Colors.primary[500] : theme.text },
-                      isMyStop && { fontWeight: '700' }
-                    ]}>
-                      {stop.stopName}
-                      {isMyStop ? ' ← Your Stop' : ''}
-                    </Text>
-                    {stop.morningTime && (
-                      <Text style={[styles.stopTime, { color: theme.textMuted }]}>
-                        Pickup: {stop.morningTime}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        </Card>
-      )}
-
-      {/* Not started message */}
-      {liveLocation && !liveLocation.tripActive && (
-        <Card style={[styles.hintCard, { backgroundColor: '#fef3c7' }]}>
-          <Ionicons name="time-outline" size={20} color="#d97706" />
-          <Text style={[styles.hintText, { color: '#92400e' }]}>
-            The bus hasn't started yet. You'll receive a push notification when the driver starts the trip.
-          </Text>
+          {routeStops.map((stop: any, idx: number) => (
+            <View key={stop.id ?? idx} style={styles.stopRow}>
+              <View style={styles.stopTimeline}>
+                <View style={[styles.stopDot, { backgroundColor: (stop.stopName ?? stop.name) === data.stopName ? Colors.primary[500] : theme.border }]} />
+                {idx < routeStops.length - 1 && <View style={[styles.stopLine, { backgroundColor: theme.border }]} />}
+              </View>
+              <View style={{ flex: 1, paddingBottom: 16 }}>
+                <Text style={[styles.stopName, { color: theme.text }]}>{stop.stopName ?? stop.name}</Text>
+                <Text style={[styles.stopTime, { color: theme.textMuted }]}>{stop.morningTime ?? stop.morningPickupTime ?? ''}</Text>
+              </View>
+            </View>
+          ))}
         </Card>
       )}
     </ScrollView>
@@ -317,17 +188,13 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 60, gap: 12 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, padding: 32 },
   loadingText: { fontSize: 14 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', marginTop: 8 },
-  emptySubtitle: { fontSize: 14, textAlign: 'center', marginTop: 4, lineHeight: 20 },
-
-  statusBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    padding: 14, borderRadius: 12,
-  },
+  switcher: { gap: 8, paddingRight: 12 },
+  chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 },
+  chipText: { fontSize: 13, fontWeight: '800' },
+  statusBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 12 },
   pulseDot: { width: 10, height: 10, borderRadius: 5 },
   bannerText: { flex: 1, color: '#fff', fontSize: 14, fontWeight: '600' },
   refreshBtn: { padding: 4 },
-
   cardTitle: { fontSize: 15, fontWeight: '700', marginBottom: 12 },
   myTransportCard: { gap: 12 },
   routeInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -336,31 +203,19 @@ const styles = StyleSheet.create({
   routeCode: { fontSize: 12, marginTop: 2 },
   stopInfo: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10 },
   stopText: { fontSize: 13 },
-
   statusGrid: { flexDirection: 'row', gap: 12 },
-  statusBox: {
-    flex: 1, alignItems: 'center', gap: 6, padding: 16, borderRadius: 12,
-  },
+  statusBox: { flex: 1, alignItems: 'center', gap: 6, padding: 16, borderRadius: 12 },
   statusBoxLabel: { fontSize: 12, fontWeight: '600' },
   statusTime: { fontSize: 14, fontWeight: '700' },
-  waitingText: { fontSize: 12, textAlign: 'center', marginTop: 8 },
-
   locationHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   updatedText: { fontSize: 11 },
-  mapPlaceholder: {
-    height: 180, borderRadius: 12, alignItems: 'center', justifyContent: 'center', gap: 8,
-  },
-  mapCoordsText: { fontSize: 16, fontWeight: '700' },
-  mapHint: { fontSize: 12 },
-  tripStarted: { fontSize: 12, textAlign: 'center', marginTop: 8 },
-
+  mapPlaceholder: { height: 180, borderRadius: 12, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#dbeafe' },
+  mapCoordsText: { fontSize: 16, fontWeight: '700', color: '#1e3a5f' },
+  mapHint: { fontSize: 12, color: '#3b82f6' },
   stopRow: { flexDirection: 'row', gap: 12 },
   stopTimeline: { alignItems: 'center', width: 20 },
-  stopDot: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  stopDot: { width: 20, height: 20, borderRadius: 10 },
   stopLine: { width: 2, flex: 1, minHeight: 8 },
   stopName: { fontSize: 13, fontWeight: '500' },
   stopTime: { fontSize: 11, marginTop: 2 },
-
-  hintCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 12 },
-  hintText: { flex: 1, fontSize: 13, lineHeight: 18 },
 });
