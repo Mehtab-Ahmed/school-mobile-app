@@ -31,7 +31,7 @@ const STUDENT_TABS: TabConfig[] = [
   { name: 'index', title: 'Dashboard', icon: 'grid-outline', focusedIcon: 'grid' },
   { name: 'attendance', title: 'Attendance', icon: 'checkmark-circle-outline', focusedIcon: 'checkmark-circle' },
   { name: 'homework', title: 'Homework', icon: 'book-outline', focusedIcon: 'book' },
-  { name: 'exams', title: 'Exams', icon: 'document-text-outline', focusedIcon: 'document-text' },
+  { name: 'practice', title: 'Practice', icon: 'flash-outline', focusedIcon: 'flash' },
   { name: 'more', title: 'More', icon: 'menu-outline', focusedIcon: 'menu' },
 ];
 
@@ -49,7 +49,7 @@ const DRIVER_TABS: TabConfig[] = [
 ];
 
 // All possible tab names
-const ALL_TABS = ['index', 'students', 'teachers', 'fees', 'attendance', 'homework', 'timetable', 'exams', 'more'];
+const ALL_TABS = ['index', 'students', 'teachers', 'fees', 'attendance', 'homework', 'timetable', 'exams', 'practice', 'more'];
 
 export default function TabsLayout() {
   const scheme = useColorScheme();

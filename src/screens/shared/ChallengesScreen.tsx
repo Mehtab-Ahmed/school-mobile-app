@@ -46,7 +46,7 @@ export default function ChallengesScreen() {
   });
 
   const challenges: any[] = challengesData ?? [];
-  const progressMap = new Map((progressData ?? []).map((p: any) => [p.challengeId, p]));
+  const progressMap: Map<number, any> = new Map((progressData ?? []).map((p: any) => [p.challengeId, p]));
   const levels: any[] = levelsData ?? [];
   const myLevel = myLevelData;
 
