@@ -23,6 +23,7 @@ import StudentTransport from '../student/StudentTransport';
 import StudentTimetable from '../student/StudentTimetable';
 import StudentBusTracking from '../student/StudentBusTracking';
 import TeacherExams from '../teacher/TeacherExams';
+import StudentExams from '../student/StudentExams';
 import TeacherStudents from '../teacher/TeacherStudents';
 import ParentHomework from '../parent/ParentHomework';
 import DriverPortal from '../driver/DriverPortal';
@@ -35,6 +36,13 @@ import PTMScreen from './PTMScreen';
 import TeacherPerformanceScreen from '../teacher/TeacherPerformanceScreen';
 import AdminAtRiskScreen from '../admin/AdminAtRiskScreen';
 import FeeInstallmentsScreen from '../student/FeeInstallmentsScreen';
+import TeacherTodayScreen from '../teacher/TeacherTodayScreen';
+import StudentRevisionScreen from '../student/StudentRevisionScreen';
+import SportsScreen from './SportsScreen';
+import OnlineClassesScreen from './OnlineClassesScreen';
+import PortfolioScreen from './PortfolioScreen';
+import RecommendationsScreen from './RecommendationsScreen';
+import ParentMappingScreen from '../admin/ParentMappingScreen';
 
 type MenuItem = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -47,12 +55,14 @@ type MenuItem = {
 type ModalScreen =
   | 'announcements' | 'notifications' | 'leaves' | 'applyLeave'
   | 'library' | 'transport' | 'timetable' | 'busTracking'
-  | 'teacherExams' | 'teacherStudents'
+  | 'teacherExams' | 'teacherStudents' | 'studentExams'
   | 'parentHomework'
   | 'driverPortal'
   | 'gamification'
   | 'events' | 'lms' | 'challenges' | 'certificates' | 'ptm'
   | 'teacherPerf' | 'atRisk' | 'feeInstallments'
+  | 'teacherToday' | 'studentRevision' | 'sports' | 'onlineClasses' | 'portfolio' | 'recommendations'
+  | 'parentMapping'
   | null;
 
 export default function MoreScreen() {
@@ -126,10 +136,16 @@ export default function MoreScreen() {
     );
   } else if (role === 'STUDENT') {
     roleMenuItems.push(
+      { icon: 'document-text-outline', label: 'Exams & Results', subtitle: 'Schedule, marks and report cards', color: '#7c3aed', action: () => setScreen('studentExams') },
       { icon: 'trophy-outline', label: '🏆 Leaderboard & Points', subtitle: 'Badges, points & rankings', color: '#f59e0b', action: () => setScreen('gamification') },
       { icon: 'flash-outline', label: 'Challenges & XP', subtitle: 'Complete challenges, earn XP', color: '#ef4444', action: () => setScreen('challenges') },
       { icon: 'calendar-outline', label: 'School Calendar', subtitle: 'Events, exams & holidays', color: '#06b6d4', action: () => setScreen('events') },
       { icon: 'library-outline', label: 'Study Materials', subtitle: 'LMS resources & bookmarks', color: '#6366f1', action: () => setScreen('lms') },
+      { icon: 'sparkles-outline', label: 'Daily Summary & Tests', subtitle: 'Revision notes and weekly MCQs', color: '#06b6d4', action: () => setScreen('studentRevision') },
+      { icon: 'videocam-outline', label: 'Online Classes', subtitle: 'Join live classes', color: '#ef4444', action: () => setScreen('onlineClasses') },
+      { icon: 'folder-open-outline', label: 'Portfolio', subtitle: 'Projects and achievements', color: '#14b8a6', action: () => setScreen('portfolio') },
+      { icon: 'bulb-outline', label: 'Recommendations', subtitle: 'Personal learning insights', color: '#f97316', action: () => setScreen('recommendations') },
+      { icon: 'football-outline', label: 'Sports & Winners', subtitle: 'Competitions and prizes', color: '#f59e0b', action: () => setScreen('sports') },
       { icon: 'ribbon-outline', label: 'My Certificates', subtitle: 'Awards & achievements', color: '#10b981', action: () => setScreen('certificates') },
       { icon: 'wallet-outline', label: 'Fee Installments', subtitle: 'Payment schedule & status', color: '#8b5cf6', action: () => setScreen('feeInstallments') },
       { icon: 'book-outline', label: 'Library', subtitle: 'Browse & issued books', color: Colors.primary[500], action: () => setScreen('library') },
@@ -142,10 +158,13 @@ export default function MoreScreen() {
   } else if (role === 'TEACHER') {
     roleMenuItems.push(
       { icon: 'document-text-outline', label: 'Exams & Marks', subtitle: 'Enter student marks', color: '#7c3aed', action: () => setScreen('teacherExams') },
+      { icon: 'today-outline', label: 'Today & Lesson Notes', subtitle: 'Start lesson and record what was taught', color: Colors.primary[500], action: () => setScreen('teacherToday') },
       { icon: 'bar-chart-outline', label: 'My Performance', subtitle: 'Performance metrics & score', color: '#6366f1', action: () => setScreen('teacherPerf') },
       { icon: 'people-outline', label: 'PTM Meetings', subtitle: 'Manage parent-teacher meetings', color: '#06b6d4', action: () => setScreen('ptm') },
       { icon: 'calendar-outline', label: 'School Calendar', subtitle: 'Events, exams & holidays', color: '#f97316', action: () => setScreen('events') },
       { icon: 'library-outline', label: 'Study Materials', subtitle: 'Upload LMS resources', color: '#8b5cf6', action: () => setScreen('lms') },
+      { icon: 'videocam-outline', label: 'Online Classes', subtitle: 'Start and join live classes', color: '#ef4444', action: () => setScreen('onlineClasses') },
+      { icon: 'football-outline', label: 'Sports & Winners', subtitle: 'Competitions and prizes', color: '#f59e0b', action: () => setScreen('sports') },
       { icon: 'trophy-outline', label: 'Leaderboard', subtitle: 'Class & school rankings', color: '#f59e0b', action: () => setScreen('gamification') },
       { icon: 'people-outline', label: 'My Students', subtitle: 'View student profiles', color: '#059669', action: () => setScreen('teacherStudents') },
       { icon: 'book-outline', label: 'Library', subtitle: 'Browse books', color: Colors.primary[500], action: () => setScreen('library') },
@@ -157,6 +176,11 @@ export default function MoreScreen() {
       { icon: 'book-outline', label: "Child's Homework", subtitle: 'Track assignments', color: '#d97706', action: () => setScreen('parentHomework') },
       { icon: 'people-outline', label: 'PTM Meetings', subtitle: 'Request & track meetings', color: '#06b6d4', action: () => setScreen('ptm') },
       { icon: 'ribbon-outline', label: "Child's Certificates", subtitle: 'Awards & achievements', color: '#10b981', action: () => setScreen('certificates') },
+      { icon: 'sparkles-outline', label: "Child's Summary", subtitle: 'Daily lesson digest and tests', color: '#06b6d4', action: () => setScreen('studentRevision') },
+      { icon: 'folder-open-outline', label: "Child's Portfolio", subtitle: 'Projects and artifacts', color: '#14b8a6', action: () => setScreen('portfolio') },
+      { icon: 'bulb-outline', label: 'Recommendations', subtitle: 'Learning and risk insights', color: '#f97316', action: () => setScreen('recommendations') },
+      { icon: 'videocam-outline', label: 'Online Classes', subtitle: "Child's live classes", color: '#ef4444', action: () => setScreen('onlineClasses') },
+      { icon: 'football-outline', label: 'Sports & Winners', subtitle: 'Competitions and prizes', color: '#f59e0b', action: () => setScreen('sports') },
       { icon: 'calendar-outline', label: 'School Calendar', subtitle: 'Events & school schedule', color: '#f97316', action: () => setScreen('events') },
       { icon: 'location-outline', label: 'Live Bus Tracking', subtitle: "Track child's school bus", color: '#22c55e', action: () => setScreen('busTracking') },
       { icon: 'megaphone-outline', label: 'Announcements', subtitle: 'School notices', color: Colors.info, action: () => setScreen('announcements') },
@@ -167,9 +191,14 @@ export default function MoreScreen() {
     // ADMIN or fallback
     roleMenuItems.push(
       { icon: 'warning-outline', label: 'At-Risk Students', subtitle: 'Academic intelligence flags', color: '#ef4444', action: () => setScreen('atRisk') },
+      { icon: 'git-branch-outline', label: 'Parent-Child Mapping', subtitle: 'Link, unlink, and reset parent credentials', color: '#10b981', action: () => setScreen('parentMapping') },
       { icon: 'bar-chart-outline', label: 'Teacher Performance', subtitle: 'Leaderboard & recalculate', color: '#6366f1', action: () => setScreen('teacherPerf') },
       { icon: 'calendar-outline', label: 'School Calendar', subtitle: 'Manage events & holidays', color: '#06b6d4', action: () => setScreen('events') },
       { icon: 'library-outline', label: 'Study Materials', subtitle: 'Manage LMS resources', color: '#8b5cf6', action: () => setScreen('lms') },
+      { icon: 'videocam-outline', label: 'Online Classes', subtitle: 'Manage live classes', color: '#ef4444', action: () => setScreen('onlineClasses') },
+      { icon: 'football-outline', label: 'Sports & Winners', subtitle: 'Competitions and prizes', color: '#f59e0b', action: () => setScreen('sports') },
+      { icon: 'folder-open-outline', label: 'Portfolio', subtitle: 'Student artifacts', color: '#14b8a6', action: () => setScreen('portfolio') },
+      { icon: 'bulb-outline', label: 'Recommendations', subtitle: 'Student insights', color: '#f97316', action: () => setScreen('recommendations') },
       { icon: 'megaphone-outline', label: 'Announcements', subtitle: 'School notices', color: Colors.primary[500], action: () => setScreen('announcements') },
       { icon: 'notifications-outline', label: `Notifications${unread > 0 ? ` (${unread})` : ''}`, subtitle: 'Recent alerts', color: Colors.info, action: () => setScreen('notifications') },
       { icon: 'calendar-outline', label: 'Leave Applications', subtitle: 'Apply & track leaves', color: Colors.warning, action: () => setScreen('leaves') },
@@ -263,6 +292,7 @@ export default function MoreScreen() {
       {fullScreenModal('transport', 'Transport Info', <StudentTransport />, '#0ea5e9')}
       {fullScreenModal('timetable', 'Timetable', <StudentTimetable />, Colors.primary[600])}
       {fullScreenModal('busTracking', '🚌 Live Bus Tracking', <StudentBusTracking />, '#0f4c2e')}
+      {fullScreenModal('studentExams', 'Exams & Results', <StudentExams />, '#7c3aed')}
       {fullScreenModal('teacherExams', 'Exams & Marks', <TeacherExams />, '#7c3aed')}
       {fullScreenModal('teacherStudents', 'My Students', <TeacherStudents />, '#059669')}
       {fullScreenModal('parentHomework', "Child's Homework", <ParentHomework />, '#d97706')}
@@ -276,6 +306,14 @@ export default function MoreScreen() {
       {fullScreenModal('teacherPerf', '📊 Teacher Performance', <TeacherPerformanceScreen />, '#6366f1')}
       {fullScreenModal('atRisk', '⚠️ At-Risk Students', <AdminAtRiskScreen />, '#ef4444')}
       {fullScreenModal('feeInstallments', '💳 Fee Installments', <FeeInstallmentsScreen />, '#8b5cf6')}
+
+      {fullScreenModal('teacherToday', 'Today & Lesson Notes', <TeacherTodayScreen />, Colors.primary[500])}
+      {fullScreenModal('studentRevision', 'Daily Summary & Tests', <StudentRevisionScreen />, '#06b6d4')}
+      {fullScreenModal('sports', 'Sports & Winners', <SportsScreen />, '#f59e0b')}
+      {fullScreenModal('onlineClasses', 'Online Classes', <OnlineClassesScreen />, '#ef4444')}
+      {fullScreenModal('portfolio', 'Portfolio', <PortfolioScreen />, '#14b8a6')}
+      {fullScreenModal('recommendations', 'Recommendations', <RecommendationsScreen />, '#f97316')}
+      {fullScreenModal('parentMapping', 'Parent-Child Mapping', <ParentMappingScreen />, '#10b981')}
 
       {/* Announcements Modal */}
       <Modal visible={screen === 'announcements'} animationType="slide" presentationStyle="pageSheet">

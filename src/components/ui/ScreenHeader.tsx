@@ -30,6 +30,8 @@ export function ScreenHeader({ title, subtitle, showBack = false, right }: Scree
   );
 }
 
+export default ScreenHeader;
+
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
