@@ -5,7 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 // For physical device: must be your machine's WiFi IP on the same network as the phone
 // For Android emulator: use 10.0.2.2 instead of your local IP
 // For iOS simulator: use localhost
-const BASE_URL = 'http://192.168.1.8:8080/api/v1';
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.1.8:8080/api/v1';
 
 export const api = axios.create({
   baseURL: BASE_URL,
@@ -41,7 +41,7 @@ api.interceptors.response.use(
       isRefreshing = true;
       try {
         const refreshToken = await SecureStore.getItemAsync('refreshToken');
-        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken });
+        const { data } = await axios.post(`${BASE_URL}/auth/refresh-token`, { refreshToken });
         const newToken = data.data?.accessToken;
         if (newToken) {
           await SecureStore.setItemAsync('accessToken', newToken);
