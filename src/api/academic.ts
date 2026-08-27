@@ -3,7 +3,7 @@ import { ApiResponse, ClassSection, TimetableEntry, LeaveApplication, LeaveBalan
 
 export const academicApi = {
   classSections: () =>
-    api.get<ApiResponse<ClassSection[]>>('/academic/class-sections'),
+    api.get<ApiResponse<ClassSection[]>>('/class-sections'),
 
   timetable: (classSectionId: number) =>
     api.get<ApiResponse<TimetableEntry[]>>(`/academic/timetable/${classSectionId}`),
