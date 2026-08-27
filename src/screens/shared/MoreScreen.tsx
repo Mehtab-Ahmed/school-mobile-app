@@ -43,6 +43,10 @@ import OnlineClassesScreen from './OnlineClassesScreen';
 import PortfolioScreen from './PortfolioScreen';
 import RecommendationsScreen from './RecommendationsScreen';
 import ParentMappingScreen from '../admin/ParentMappingScreen';
+import StudyPlanScreen from '../student/StudyPlanScreen';
+import EarlyWarningScreen from '../teacher/EarlyWarningScreen';
+import TeacherAiScreen from '../teacher/TeacherAiScreen';
+import CurriculumScreen from './CurriculumScreen';
 
 type MenuItem = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -63,6 +67,7 @@ type ModalScreen =
   | 'teacherPerf' | 'atRisk' | 'feeInstallments'
   | 'teacherToday' | 'studentRevision' | 'sports' | 'onlineClasses' | 'portfolio' | 'recommendations'
   | 'parentMapping'
+  | 'studyPlan' | 'earlyWarning' | 'teacherAi' | 'curriculum'
   | null;
 
 export default function MoreScreen() {
@@ -136,6 +141,7 @@ export default function MoreScreen() {
     );
   } else if (role === 'STUDENT') {
     roleMenuItems.push(
+      { icon: 'calendar-number-outline', label: 'My Study Plan', subtitle: 'Your week of tasks and challenges', color: '#8b5cf6', action: () => setScreen('studyPlan') },
       { icon: 'document-text-outline', label: 'Exams & Results', subtitle: 'Schedule, marks and report cards', color: '#7c3aed', action: () => setScreen('studentExams') },
       { icon: 'trophy-outline', label: '🏆 Leaderboard & Points', subtitle: 'Badges, points & rankings', color: '#f59e0b', action: () => setScreen('gamification') },
       { icon: 'flash-outline', label: 'Challenges & XP', subtitle: 'Complete challenges, earn XP', color: '#ef4444', action: () => setScreen('challenges') },
@@ -159,6 +165,9 @@ export default function MoreScreen() {
     roleMenuItems.push(
       { icon: 'document-text-outline', label: 'Exams & Marks', subtitle: 'Enter student marks', color: '#7c3aed', action: () => setScreen('teacherExams') },
       { icon: 'today-outline', label: 'Today & Lesson Notes', subtitle: 'Start lesson and record what was taught', color: Colors.primary[500], action: () => setScreen('teacherToday') },
+      { icon: 'sparkles-outline', label: 'AI Assistant', subtitle: 'Lesson plans, study packs, weak-spot questions', color: '#8b5cf6', action: () => setScreen('teacherAi') },
+      { icon: 'warning-outline', label: 'Early Warning', subtitle: 'Students needing attention', color: '#e11d48', action: () => setScreen('earlyWarning') },
+      { icon: 'library-outline', label: 'Curriculum', subtitle: 'Browse and extend the syllabus', color: '#0ea5e9', action: () => setScreen('curriculum') },
       { icon: 'bar-chart-outline', label: 'My Performance', subtitle: 'Performance metrics & score', color: '#6366f1', action: () => setScreen('teacherPerf') },
       { icon: 'people-outline', label: 'PTM Meetings', subtitle: 'Manage parent-teacher meetings', color: '#06b6d4', action: () => setScreen('ptm') },
       { icon: 'calendar-outline', label: 'School Calendar', subtitle: 'Events, exams & holidays', color: '#f97316', action: () => setScreen('events') },
@@ -314,6 +323,10 @@ export default function MoreScreen() {
       {fullScreenModal('portfolio', 'Portfolio', <PortfolioScreen />, '#14b8a6')}
       {fullScreenModal('recommendations', 'Recommendations', <RecommendationsScreen />, '#f97316')}
       {fullScreenModal('parentMapping', 'Parent-Child Mapping', <ParentMappingScreen />, '#10b981')}
+      {fullScreenModal('studyPlan', 'My Study Plan', <StudyPlanScreen />, '#8b5cf6')}
+      {fullScreenModal('teacherAi', 'AI Assistant', <TeacherAiScreen />, '#8b5cf6')}
+      {fullScreenModal('earlyWarning', 'Early Warning', <EarlyWarningScreen />, '#e11d48')}
+      {fullScreenModal('curriculum', 'Curriculum', <CurriculumScreen />, '#0ea5e9')}
 
       {/* Announcements Modal */}
       <Modal visible={screen === 'announcements'} animationType="slide" presentationStyle="pageSheet">
