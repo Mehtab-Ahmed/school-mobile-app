@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { router, type Href } from 'expo-router';
 
 // ⚠️  UPDATE THIS to your machine's current local IP (run `ipconfig` on Windows / `ifconfig` on Mac)
 // For physical device: must be your machine's WiFi IP on the same network as the phone
@@ -28,6 +29,13 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
+
+    // The server blocks everything until a temporary password is replaced.
+    if (error.response?.status === 403 && error.response?.data?.errors?.code === 'PASSWORD_CHANGE_REQUIRED') {
+      router.replace('/(auth)/change-password' as Href);
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !original._retry) {
       if (isRefreshing) {
         return new Promise((resolve) => {

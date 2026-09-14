@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   KeyboardAvoidingView, Platform, useColorScheme, Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { authApi } from '../../src/api/auth';
 import { useAuthStore } from '../../src/store/authStore';
@@ -47,7 +47,7 @@ export default function LoginScreen() {
           forcePasswordChange: d.forcePasswordChange,
         };
         await login(user, d.accessToken, d.refreshToken);
-        router.replace('/(tabs)');
+        router.replace((d.forcePasswordChange ? '/(auth)/change-password' : '/(tabs)') as Href);
       } else {
         Alert.alert('Login Failed', 'Unexpected response from server.');
       }

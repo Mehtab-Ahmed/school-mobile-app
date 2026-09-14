@@ -71,7 +71,7 @@ export default function AdminDashboard() {
       <View style={[styles.statsRow, { marginTop: 12 }]}>
         <StatCard title="Pending Leaves" value={d?.pendingLeaveRequests ?? '—'} subtitle="Awaiting approval" icon="time" iconColor="#f97316" />
         <View style={{ width: 12 }} />
-        <StatCard title="Last Payroll" value={d?.lastPayrollNetAmount ? formatCurrency(Number(d.lastPayrollNetAmount)) : '—'} subtitle={d?.lastPayrollMonth ?? ''} icon="cash" iconColor={Colors.primary[400]} />
+        <StatCard title="Overdue Fees" value={d?.overduePayments ?? '—'} subtitle="Payments past due" icon="alert-circle" iconColor={Colors.danger} />
       </View>
 
       {/* Grade bar chart */}

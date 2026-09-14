@@ -244,8 +244,6 @@ export interface AdminDashboard {
   overdueBooks: number;
   pendingLeaveRequests: number;
   studentsByGrade: Record<string, number>;
-  lastPayrollNetAmount?: number;
-  lastPayrollMonth?: string;
 }
 
 export interface TeacherDashboard {
