@@ -169,8 +169,10 @@ export interface Exam {
   examType: string;
   startDate: string;
   endDate: string;
-  status: 'UPCOMING' | 'ONGOING' | 'COMPLETED';
+  /** SCHEDULED, ONGOING, COMPLETED, RESULTS_OUT or CANCELLED. */
+  status: string;
   subject?: Subject;
+  classSection?: ClassSection;
   totalMarks?: number;
   passingMarks?: number;
 }
@@ -209,7 +211,7 @@ export interface LeaveApplication {
   startDate: string;
   endDate: string;
   reason: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
   appliedAt: string;
   totalDays?: number;
 }
@@ -250,8 +252,12 @@ export interface TeacherDashboard {
   teacherName: string;
   totalClasses: number;
   totalStudents: number;
-  pendingHomework: number;
-  todayClasses: ClassSection[];
+  /** Exams still waiting for this teacher's marks. */
+  pendingMarkEntries: number;
+  unreadMessages: number;
+  myClasses: ClassSection[];
+  /** Classes whose attendance hasn't been taken today. */
+  pendingAttendanceClasses: ClassSection[];
 }
 
 export interface Book {

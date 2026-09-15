@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import { attendanceApi } from '../../api/attendance';
+import { attendanceApi, MarkingSheetMeta } from '../../api/attendance';
 import { academicApi } from '../../api/academic';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { Card } from '../../components/ui/Card';
@@ -57,26 +57,31 @@ export default function TeacherAttendance() {
   }, [studentsData]);
 
   const students = studentsData?.data?.data ?? [];
+  const sheet = (studentsData?.data as { sheet?: MarkingSheetMeta } | undefined)?.sheet;
 
   const saveMutation = useMutation({
     mutationFn: () =>
       attendanceApi.mark({
         classSectionId: selectedClass!,
         date,
-        attendanceRecords: Object.entries(statusMap).map(([id, status]) => ({
-          studentId: Number(id),
-          status,
+        session: sheet?.session,
+        timetableSlotId: sheet?.timetableSlotId,
+        attendanceRecords: students.map((s) => ({
+          studentId: s.studentId,
+          status: statusMap[s.studentId] ?? 'PRESENT',
         })),
       }),
     onSuccess: () => {
       Alert.alert('✅ Saved', 'Attendance has been marked successfully.');
       qc.invalidateQueries({ queryKey: ['attendance-students'] });
     },
-    onError: () => Alert.alert('Error', 'Failed to save attendance. Please try again.'),
+    onError: (err: any) =>
+      Alert.alert('Could not save attendance', err?.response?.data?.message ?? 'Please try again.'),
   });
 
   const toggle = (studentId: number) => {
-    const order: AttStatus[] = ['PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'EXCUSED'];
+    // Teachers mark present, absent or late; approved leave comes from the leave request itself.
+    const order: AttStatus[] = ['PRESENT', 'ABSENT', 'LATE'];
     const curr = statusMap[studentId] ?? 'PRESENT';
     const next = order[(order.indexOf(curr) + 1) % order.length];
     setStatusMap((prev) => ({ ...prev, [studentId]: next }));
@@ -154,6 +159,14 @@ export default function TeacherAttendance() {
           </View>
         ))}
       </View>
+
+      {sheet && (sheet.subjectName || sheet.readOnlyReason) && (
+        <View style={{ paddingHorizontal: 16, paddingVertical: 8, backgroundColor: sheet.editable ? theme.surface2 : '#fef3c7' }}>
+          <Text style={{ fontSize: 12, color: sheet.editable ? theme.textSecondary : '#92400e' }}>
+            {sheet.editable ? `Marking ${sheet.subjectName}` : sheet.readOnlyReason}
+          </Text>
+        </View>
+      )}
 
       {/* Bulk actions */}
       <View style={[styles.bulkRow, { borderBottomColor: theme.border }]}>

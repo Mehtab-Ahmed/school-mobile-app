@@ -78,6 +78,7 @@ export default function MoreScreen() {
 
   const [screen, setScreen] = useState<ModalScreen>(null);
   const [leaveForm, setLeaveForm] = useState({ startDate: '', endDate: '', reason: '' });
+  const [leaveTypeId, setLeaveTypeId] = useState<number | null>(null);
 
   const { data: annData } = useQuery({
     queryKey: ['ann-all'],
@@ -95,10 +96,18 @@ export default function MoreScreen() {
     enabled: screen === 'leaves',
   });
 
+  const { data: leaveTypesData } = useQuery({
+    queryKey: ['leave-types'],
+    queryFn: () => leavesApi.types(),
+    enabled: screen === 'applyLeave',
+  });
+  const leaveTypes = (leaveTypesData?.data?.data ?? []).filter((t) => t.active !== false);
+  const chosenLeaveTypeId = leaveTypeId ?? leaveTypes[0]?.id;
+
   const applyMutation = useMutation({
     mutationFn: () =>
       leavesApi.apply({
-        leaveTypeId: 1,
+        leaveTypeId: chosenLeaveTypeId!,
         startDate: leaveForm.startDate,
         endDate: leaveForm.endDate,
         reason: leaveForm.reason,
@@ -109,7 +118,7 @@ export default function MoreScreen() {
       setLeaveForm({ startDate: '', endDate: '', reason: '' });
       qc.invalidateQueries({ queryKey: ['my-leaves'] });
     },
-    onError: () => Alert.alert('Error', 'Failed to apply for leave.'),
+    onError: (err: any) => Alert.alert('Could not apply for leave', err?.response?.data?.message ?? 'Please try again.'),
   });
 
   const markReadMutation = useMutation({
@@ -445,6 +454,20 @@ export default function MoreScreen() {
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={{ padding: 24, gap: 4 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: theme.textSecondary, marginBottom: 6 }}>Leave type</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+              {leaveTypes.length === 0 ? (
+                <Text style={{ fontSize: 12, color: theme.textMuted }}>No leave types set up yet — ask the school office.</Text>
+              ) : leaveTypes.map((t) => {
+                const active = t.id === chosenLeaveTypeId;
+                return (
+                  <TouchableOpacity key={t.id} onPress={() => setLeaveTypeId(t.id)}
+                    style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 99, backgroundColor: active ? Colors.primary[500] : theme.surface2 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#fff' : theme.textSecondary }}>{t.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
             <Input
               label="Start Date (YYYY-MM-DD)"
               value={leaveForm.startDate}
@@ -467,8 +490,8 @@ export default function MoreScreen() {
             <Button
               label="Submit Application"
               onPress={() => {
-                if (!leaveForm.startDate || !leaveForm.endDate || !leaveForm.reason) {
-                  Alert.alert('Required', 'All fields are required.');
+                if (!chosenLeaveTypeId || !leaveForm.startDate || !leaveForm.endDate || !leaveForm.reason) {
+                  Alert.alert('Required', 'Choose a leave type and fill in all fields.');
                   return;
                 }
                 applyMutation.mutate();

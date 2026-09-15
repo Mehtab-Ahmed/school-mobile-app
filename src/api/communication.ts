@@ -1,4 +1,5 @@
 import api from './axios';
+import { mapData } from './mapResponse';
 import { ApiResponse, Announcement, Notification } from '../types';
 
 export const communicationApi = {
@@ -7,9 +8,24 @@ export const communicationApi = {
       params: audience ? { targetAudience: audience } : {},
     }),
 
+  /** The newest 50 of the signed-in user's notifications. */
   notifications: () =>
-    api.get<ApiResponse<Notification[]>>('/communication/notifications/my'),
+    mapData(api.get<ApiResponse<{ content: any[] }>>('/notifications/my', { params: { size: 50 } }),
+      (page): Notification[] => (page?.content ?? []).map((n) => ({
+        id: n.id,
+        title: n.title,
+        message: n.body ?? '',
+        type: n.type,
+        read: !!n.read,
+        createdAt: n.sentAt,
+      }))),
+
+  unreadCount: () =>
+    api.get<ApiResponse<number>>('/notifications/unread-count'),
 
   markRead: (id: number) =>
-    api.put<ApiResponse<unknown>>(`/communication/notifications/${id}/read`),
+    api.put<ApiResponse<unknown>>(`/notifications/${id}/read`),
+
+  markAllRead: () =>
+    api.put<ApiResponse<unknown>>('/notifications/mark-all-read'),
 };

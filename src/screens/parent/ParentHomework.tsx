@@ -34,7 +34,7 @@ export default function ParentHomework() {
 
   const { data: hwData, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['child-homework', child?.id],
-    queryFn: () => homeworkApi.pending(child.id),
+    queryFn: () => homeworkApi.all(child.id),
     enabled: !!child,
   });
 

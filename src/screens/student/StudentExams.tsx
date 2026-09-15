@@ -13,6 +13,7 @@ import { Badge, statusVariant } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Colors } from '../../theme/colors';
 import { ExamMark } from '../../types';
+import { ReportCardSummary } from '../../components/ReportCardSummary';
 
 function gradeColor(pct: number) {
   if (pct >= 90) return Colors.success;
@@ -57,7 +58,8 @@ export default function StudentExams() {
           data={marks}
           keyExtractor={(m) => String(m.id)}
           contentContainerStyle={[styles.list, marks.length === 0 && { flex: 1 }]}
-          ListEmptyComponent={<EmptyState icon="document-text-outline" title="No exam results yet" />}
+          ListHeaderComponent={<ReportCardSummary studentId={studentId} />}
+          ListEmptyComponent={<EmptyState icon="document-text-outline" title="No exam results yet" subtitle="Results show here once the school publishes them" />}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary[500]} />}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           renderItem={({ item }) => {

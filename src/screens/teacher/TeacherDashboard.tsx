@@ -16,10 +16,9 @@ export default function TeacherDashboard() {
   const theme = scheme === 'dark' ? Colors.dark : Colors.light;
   const user = useAuthStore((s) => s.user);
 
-  // Find teacher ID (hack: user.userId is teacher's user id, need to map)
   const { data: dashData, refetch, isRefetching } = useQuery({
     queryKey: ['teacher-dashboard', user?.userId],
-    queryFn: () => dashboardApi.teacher(user!.userId),
+    queryFn: () => dashboardApi.teacher(),
     enabled: !!user,
   });
 
@@ -59,18 +58,18 @@ export default function TeacherDashboard() {
         <StatCard title="Students" value={d?.totalStudents ?? '—'} icon="people" iconColor="#8b5cf6" />
       </View>
       <View style={[styles.statsRow, { marginTop: 12 }]}>
-        <StatCard title="Pending HW" value={d?.pendingHomework ?? '—'} subtitle="To review" icon="book" iconColor={Colors.warning} />
+        <StatCard title="Marks to Enter" value={d?.pendingMarkEntries ?? '—'} subtitle="Open exams" icon="create" iconColor={Colors.warning} />
         <View style={{ width: 12 }} />
-        <StatCard title="Today's Classes" value={d?.todayClasses?.length ?? 0} icon="calendar" iconColor={Colors.info} />
+        <StatCard title="Attendance Due" value={d?.pendingAttendanceClasses?.length ?? 0} subtitle="Classes today" icon="calendar" iconColor={Colors.info} />
       </View>
 
-      {/* Today's classes */}
-      {d?.todayClasses && d.todayClasses.length > 0 && (
+      {/* Classes still to mark today */}
+      {d?.pendingAttendanceClasses && d.pendingAttendanceClasses.length > 0 && (
         <>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Classes</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Attendance still to mark</Text>
           <Card style={{ gap: 10 }}>
-            {d.todayClasses.map((cls, i) => (
-              <View key={cls.id ?? i} style={[styles.classRow, { borderBottomColor: theme.border, borderBottomWidth: i < d.todayClasses.length - 1 ? 1 : 0 }]}>
+            {d.pendingAttendanceClasses.map((cls, i) => (
+              <View key={cls.id ?? i} style={[styles.classRow, { borderBottomColor: theme.border, borderBottomWidth: i < d.pendingAttendanceClasses.length - 1 ? 1 : 0 }]}>
                 <View style={[styles.classBadge, { backgroundColor: Colors.primary[500] + '22' }]}>
                   <Text style={[styles.classBadgeText, { color: Colors.primary[500] }]}>
                     {cls.grade?.name ?? 'Grade'}

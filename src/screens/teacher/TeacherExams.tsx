@@ -4,10 +4,9 @@ import {
   useColorScheme, ActivityIndicator, RefreshControl,
   Modal, TextInput, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { examsApi } from '../../api/exams';
-import { studentsApi } from '../../api/students';
 import { academicApi } from '../../api/academic';
 import api from '../../api/axios';
 import { Card } from '../../components/ui/Card';
@@ -30,6 +29,7 @@ export default function TeacherExams() {
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [marks, setMarks] = useState<MarkEntry[]>([]);
+  const [loadingRoster, setLoadingRoster] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const { data: classesData } = useQuery({
@@ -39,49 +39,82 @@ export default function TeacherExams() {
 
   const { data: examsData, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['exams-teacher', selectedClassId],
-    queryFn: () => api.get('/exams', { params: selectedClassId ? { classSectionId: selectedClassId } : {} }).then(r => r.data),
-  });
-
-  const { data: studentsData } = useQuery({
-    queryKey: ['students-class', selectedClassId],
-    queryFn: () => studentsApi.list({ size: 100 }),
-    enabled: !!selectedExam,
+    queryFn: () => examsApi.list(selectedClassId ? { classSectionId: selectedClassId } : undefined),
   });
 
   const classes: ClassSection[] = classesData?.data?.data ?? [];
-  const exams: Exam[] = examsData?.data?.data ?? examsData?.data ?? [];
-  const students: Student[] = studentsData?.data?.data?.content ?? [];
+  const exams: Exam[] = examsData?.data?.data ?? [];
 
-  const openMarkEntry = (exam: Exam) => {
+  /** Loads the exam's class roster and any marks already entered, so the teacher can pick up where they left off. */
+  const openMarkEntry = async (exam: Exam) => {
+    if (!exam.subject) {
+      Alert.alert('Several subjects', 'This exam covers more than one subject. Enter its marks on the website, where you can choose the subject.');
+      return;
+    }
+    const classId = exam.classSection?.id;
+    if (!classId) {
+      Alert.alert('No class', 'This exam is not linked to a class.');
+      return;
+    }
     setSelectedExam(exam);
-    const classStudents = selectedClassId
-      ? students.filter(s => s.classSection?.id === selectedClassId)
-      : students.slice(0, 30);
-    setMarks(classStudents.map(s => ({
-      studentId: s.id,
-      studentName: `${s.user.firstName} ${s.user.lastName}`,
-      marksObtained: '',
-      absent: false,
-    })));
+    setMarks([]);
+    setLoadingRoster(true);
+    try {
+      const [rosterRes, marksRes] = await Promise.all([
+        api.get(`/students/class/${classId}`),
+        examsApi.classMarks(exam.id).catch(() => null),
+      ]);
+      const roster: Student[] = rosterRes.data?.data ?? [];
+      const existing = new Map<number, any>(
+        (marksRes?.data?.data ?? [])
+          .filter((m: any) => !m.subject || m.subject.id === exam.subject?.id)
+          .map((m: any) => [m.student?.id, m]),
+      );
+      setMarks(roster.map((s) => {
+        const m = existing.get(s.id);
+        return {
+          studentId: s.id,
+          studentName: `${s.user.firstName} ${s.user.lastName}`,
+          marksObtained: m?.marksObtained != null ? String(m.marksObtained) : '',
+          absent: !!m?.absent,
+        };
+      }));
+    } catch (err: any) {
+      Alert.alert('Could not load the class', err?.response?.data?.message ?? 'Please try again.');
+      setSelectedExam(null);
+    } finally {
+      setLoadingRoster(false);
+    }
   };
 
   const saveMarks = async () => {
-    if (!selectedExam) return;
+    if (!selectedExam?.subject) return;
+    const max = selectedExam.totalMarks ?? 100;
+    const entries = marks
+      .filter((m) => m.absent || m.marksObtained.trim() !== '')
+      .map((m) => ({
+        studentId: m.studentId,
+        absent: m.absent,
+        marksObtained: m.absent ? null : Number(m.marksObtained),
+      }));
+    const bad = entries.find((e) => !e.absent && (Number.isNaN(e.marksObtained) || (e.marksObtained ?? 0) < 0 || (e.marksObtained ?? 0) > max));
+    if (bad) {
+      const who = marks.find((m) => m.studentId === bad.studentId)?.studentName;
+      Alert.alert('Check the marks', `${who}'s marks must be between 0 and ${max}.`);
+      return;
+    }
+    if (entries.length === 0) {
+      Alert.alert('Nothing to save', 'Enter marks or mark students absent first.');
+      return;
+    }
     setSaving(true);
     try {
-      await Promise.all(
-        marks.map(m =>
-          api.put(`/exams/${selectedExam.id}/results/${m.studentId}`, {
-            marksObtained: m.absent ? null : parseFloat(m.marksObtained) || 0,
-            absent: m.absent,
-          })
-        )
-      );
-      Alert.alert('Saved', 'Marks saved successfully.');
+      await examsApi.saveMarks(selectedExam.id, { subjectId: selectedExam.subject.id, entries });
+      Alert.alert('Saved', `Marks saved for ${entries.length} student${entries.length !== 1 ? 's' : ''}.`);
       setSelectedExam(null);
       qc.invalidateQueries({ queryKey: ['exams-teacher'] });
-    } catch {
-      Alert.alert('Error', 'Failed to save marks. Please try again.');
+    } catch (err: any) {
+      Alert.alert('Could not save marks', err?.response?.data?.message ?? 'Please try again.');
     } finally {
       setSaving(false);
     }
@@ -96,11 +129,12 @@ export default function TeacherExams() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.examName, { color: theme.text }]}>{item.name}</Text>
-            <Text style={[styles.examType, { color: theme.textSecondary }]}>{item.examType}</Text>
-            <Text style={[styles.examDate, { color: theme.textMuted }]}>
-              {item.startDate} – {item.endDate}
+            <Text style={[styles.examType, { color: theme.textSecondary }]}>
+              {item.examType}{item.subject ? ` · ${item.subject.name}` : ''}
+              {item.classSection ? ` · ${item.classSection.grade?.name}-${item.classSection.section?.name}` : ''}
             </Text>
-            {item.totalMarks && (
+            <Text style={[styles.examDate, { color: theme.textMuted }]}>{item.startDate}</Text>
+            {item.totalMarks != null && (
               <Text style={[styles.examMarks, { color: theme.textMuted }]}>
                 Total: {item.totalMarks} marks · Pass: {item.passingMarks}
               </Text>
@@ -108,7 +142,7 @@ export default function TeacherExams() {
           </View>
         </View>
         <View style={styles.examRight}>
-          <Badge label={item.status} variant={statusVariant(item.status)} small />
+          <Badge label={item.status.replace('_', ' ')} variant={statusVariant(item.status)} small />
           <Ionicons name="chevron-forward" size={16} color={theme.textMuted} style={{ marginTop: 8 }} />
         </View>
       </Card>
@@ -176,13 +210,13 @@ export default function TeacherExams() {
                 {selectedExam?.name}
               </Text>
               <Text style={[styles.modalSub, { color: theme.textSecondary }]}>
-                Enter marks (max: {selectedExam?.totalMarks ?? '—'})
+                {selectedExam?.subject?.name} · out of {selectedExam?.totalMarks ?? '—'}
               </Text>
             </View>
             <View style={styles.modalActions}>
               <TouchableOpacity
                 onPress={saveMarks}
-                disabled={saving}
+                disabled={saving || loadingRoster}
                 style={[styles.saveBtn, { backgroundColor: Colors.primary[500] }]}
               >
                 {saving
@@ -196,59 +230,63 @@ export default function TeacherExams() {
             </View>
           </View>
 
-          <FlatList
-            data={marks}
-            keyExtractor={item => String(item.studentId)}
-            contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 60 }}
-            ListEmptyComponent={<EmptyState icon="people-outline" title="No students" subtitle="No students found for this class" />}
-            renderItem={({ item, index }) => (
-              <Card style={styles.markRow}>
-                <View style={[styles.markAvatar, { backgroundColor: Colors.primary[500] + '20' }]}>
-                  <Text style={[styles.markAvatarText, { color: Colors.primary[500] }]}>
-                    {item.studentName.charAt(0)}
+          {loadingRoster ? (
+            <ActivityIndicator color={Colors.primary[500]} style={{ marginTop: 40 }} />
+          ) : (
+            <FlatList
+              data={marks}
+              keyExtractor={item => String(item.studentId)}
+              contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 60 }}
+              ListEmptyComponent={<EmptyState icon="people-outline" title="No students" subtitle="No students found for this class" />}
+              renderItem={({ item, index }) => (
+                <Card style={styles.markRow}>
+                  <View style={[styles.markAvatar, { backgroundColor: Colors.primary[500] + '20' }]}>
+                    <Text style={[styles.markAvatarText, { color: Colors.primary[500] }]}>
+                      {item.studentName.charAt(0)}
+                    </Text>
+                  </View>
+                  <Text style={[styles.markStudentName, { color: theme.text }]} numberOfLines={1}>
+                    {item.studentName}
                   </Text>
-                </View>
-                <Text style={[styles.markStudentName, { color: theme.text }]} numberOfLines={1}>
-                  {item.studentName}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    const updated = [...marks];
-                    updated[index] = { ...updated[index], absent: !updated[index].absent };
-                    setMarks(updated);
-                  }}
-                  style={[styles.absentBtn, item.absent && { backgroundColor: Colors.danger + '20' }]}
-                >
-                  <Ionicons
-                    name={item.absent ? 'close-circle' : 'close-circle-outline'}
-                    size={18}
-                    color={item.absent ? Colors.danger : theme.textMuted}
+                  <TouchableOpacity
+                    onPress={() => {
+                      const updated = [...marks];
+                      updated[index] = { ...updated[index], absent: !updated[index].absent };
+                      setMarks(updated);
+                    }}
+                    style={[styles.absentBtn, item.absent && { backgroundColor: Colors.danger + '20' }]}
+                  >
+                    <Ionicons
+                      name={item.absent ? 'close-circle' : 'close-circle-outline'}
+                      size={18}
+                      color={item.absent ? Colors.danger : theme.textMuted}
+                    />
+                    <Text style={[styles.absentText, { color: item.absent ? Colors.danger : theme.textMuted }]}>
+                      {item.absent ? 'Absent' : 'Mark Absent'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TextInput
+                    style={[
+                      styles.marksInput,
+                      { backgroundColor: theme.surface2, color: theme.text, borderColor: theme.border },
+                      item.absent && { opacity: 0.4 },
+                    ]}
+                    value={item.marksObtained}
+                    onChangeText={t => {
+                      const updated = [...marks];
+                      updated[index] = { ...updated[index], marksObtained: t };
+                      setMarks(updated);
+                    }}
+                    keyboardType="decimal-pad"
+                    placeholder="—"
+                    placeholderTextColor={theme.textMuted}
+                    editable={!item.absent}
+                    maxLength={6}
                   />
-                  <Text style={[styles.absentText, { color: item.absent ? Colors.danger : theme.textMuted }]}>
-                    {item.absent ? 'Absent' : 'Mark Absent'}
-                  </Text>
-                </TouchableOpacity>
-                <TextInput
-                  style={[
-                    styles.marksInput,
-                    { backgroundColor: theme.surface2, color: theme.text, borderColor: theme.border },
-                    item.absent && { opacity: 0.4 },
-                  ]}
-                  value={item.marksObtained}
-                  onChangeText={t => {
-                    const updated = [...marks];
-                    updated[index] = { ...updated[index], marksObtained: t };
-                    setMarks(updated);
-                  }}
-                  keyboardType="decimal-pad"
-                  placeholder="—"
-                  placeholderTextColor={theme.textMuted}
-                  editable={!item.absent}
-                  maxLength={6}
-                />
-              </Card>
-            )}
-          />
+                </Card>
+              )}
+            />
+          )}
         </KeyboardAvoidingView>
       </Modal>
     </View>
