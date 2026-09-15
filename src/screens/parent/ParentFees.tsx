@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, useColorScheme, RefreshControl, ActivityIndicator } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useChildren } from '../../hooks/useChildren';
+import { ChildSwitcher } from '../../components/ChildSwitcher';
 import { useAuthStore } from '../../store/authStore';
 import { studentsApi } from '../../api/students';
 import { feesApi } from '../../api/fees';
@@ -17,14 +19,7 @@ export default function ParentFees() {
   const theme = scheme === 'dark' ? Colors.dark : Colors.light;
   const user = useAuthStore((s) => s.user);
 
-  const { data: childrenData } = useQuery({
-    queryKey: ['children', user?.userId],
-    queryFn: () => studentsApi.byParent(user!.userId),
-    enabled: !!user,
-  });
-
-  const children = childrenData?.data?.data ?? [];
-  const childId = children[0]?.id;
+  const { childId } = useChildren();
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['fee-parent', childId],
@@ -39,6 +34,7 @@ export default function ParentFees() {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <ScreenHeader title="Fee Details" />
+        <ChildSwitcher />
         <ActivityIndicator color={Colors.primary[500]} style={{ marginTop: 40 }} />
       </View>
     );
@@ -89,7 +85,11 @@ export default function ParentFees() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.payReceipt, { color: theme.textMuted }]}>{item.receiptNumber}</Text>
               <Text style={[styles.payCategory, { color: theme.text }]}>{item.feeCategory?.name ?? 'General'}</Text>
-              <Text style={[styles.payDate, { color: theme.textSecondary }]}>{item.paymentDate}</Text>
+              <Text style={[styles.payDate, { color: theme.textSecondary }]}>
+                {item.status === 'PAID'
+                  ? `Paid ${item.paymentDate}${item.paymentMethod ? ` · ${item.paymentMethod}` : ''}`
+                  : `${item.period ? `${item.period} · ` : ''}Due ${item.dueDate ?? item.paymentDate}`}
+              </Text>
             </View>
             <View style={{ alignItems: 'flex-end', gap: 6 }}>
               <Text style={[styles.payAmt, { color: theme.text }]}>{fmt(Number(item.amount))}</Text>

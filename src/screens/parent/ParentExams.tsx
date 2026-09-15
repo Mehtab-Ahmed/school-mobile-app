@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, useColorScheme, ActivityIndicator, RefreshControl } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useChildren } from '../../hooks/useChildren';
+import { ChildSwitcher } from '../../components/ChildSwitcher';
 import { useAuthStore } from '../../store/authStore';
 import { studentsApi } from '../../api/students';
 import { examsApi } from '../../api/exams';
@@ -23,13 +25,7 @@ export default function ParentExams() {
   const theme = scheme === 'dark' ? Colors.dark : Colors.light;
   const user = useAuthStore((s) => s.user);
 
-  const { data: childrenData } = useQuery({
-    queryKey: ['children', user?.userId],
-    queryFn: () => studentsApi.byParent(user!.userId),
-    enabled: !!user,
-  });
-
-  const childId = childrenData?.data?.data?.[0]?.id;
+  const { childId } = useChildren();
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['exam-marks-parent', childId],
@@ -42,6 +38,7 @@ export default function ParentExams() {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScreenHeader title="Child's Exam Results" />
+      <ChildSwitcher />
       {isLoading ? (
         <ActivityIndicator color={Colors.primary[500]} style={{ marginTop: 40 }} />
       ) : (
@@ -49,7 +46,7 @@ export default function ParentExams() {
           data={marks}
           keyExtractor={(m) => String(m.id)}
           contentContainerStyle={[styles.list, marks.length === 0 && { flex: 1 }]}
-          ListHeaderComponent={<ReportCardSummary studentId={childId} />}
+          ListHeaderComponent={childId ? <ReportCardSummary studentId={childId} /> : null}
           ListEmptyComponent={<EmptyState icon="document-text-outline" title="No results yet" subtitle="Results show here once the school publishes them" />}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary[500]} />}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, useColorScheme, RefreshControl,
+  ActivityIndicator, useColorScheme, RefreshControl, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -154,11 +154,17 @@ export default function StudentBusTracking() {
             <Text style={[styles.cardTitle, { color: theme.text }]}>Live Bus Location</Text>
             <Text style={[styles.updatedText, { color: theme.textMuted }]}>Updated {getTimeSince(data.locationUpdatedAt)}</Text>
           </View>
-          <View style={styles.mapPlaceholder}>
-            <Ionicons name="map-outline" size={48} color="#3b82f6" />
-            <Text style={styles.mapCoordsText}>{Number(data.latitude).toFixed(4)}, {Number(data.longitude).toFixed(4)}</Text>
-            <Text style={styles.mapHint}>Live GPS coordinates</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.mapPlaceholder}
+            activeOpacity={0.85}
+            accessibilityRole="link"
+            accessibilityLabel="Open the bus location in maps"
+            onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${data.latitude},${data.longitude}`)}
+          >
+            <Ionicons name="map" size={48} color="#3b82f6" />
+            <Text style={styles.mapCoordsText}>See the bus on the map</Text>
+            <Text style={styles.mapHint}>Opens Google Maps{data.driverName ? ` · Driver: ${data.driverName}` : ''}</Text>
+          </TouchableOpacity>
         </Card>
       )}
 

@@ -1,3 +1,4 @@
+import { localIsoDate } from '../utils/date';
 import api from './axios';
 import { mapData } from './mapResponse';
 import { ApiResponse, AttendanceRecord, AttendanceSummary } from '../types';
@@ -17,7 +18,7 @@ const toScreenStatus = (s?: string): AttendanceRecord['status'] =>
 
 const toServerStatus = (s: string) => (s === 'EXCUSED' ? 'ON_LEAVE' : s);
 
-const iso = (d: Date) => d.toISOString().split('T')[0];
+const iso = (d: Date) => localIsoDate(d);
 
 export const attendanceApi = {
   /**

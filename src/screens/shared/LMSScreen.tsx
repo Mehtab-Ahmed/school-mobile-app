@@ -26,7 +26,7 @@ export default function LMSScreen() {
   const theme = scheme === 'dark' ? Colors.dark : Colors.light;
   const { user } = useAuthStore();
   const role = user?.primaryRole ?? 'STUDENT';
-  const canCreate = role === 'ADMIN' || role === 'TEACHER';
+  const canCreate = role === 'ADMIN' || role === 'PRINCIPAL' || role === 'TEACHER';
   const isStudent = role === 'STUDENT';
   const qc = useQueryClient();
 

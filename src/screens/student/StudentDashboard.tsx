@@ -1,3 +1,4 @@
+import { localIsoDate } from '../../utils/date';
 import React from 'react';
 import {
   ScrollView, View, Text, StyleSheet, useColorScheme, RefreshControl,
@@ -32,8 +33,8 @@ export default function StudentDashboard() {
   const student = studentsData?.data?.data?.content?.find((s) => s.user?.id === user?.userId);
   const studentId = student?.id;
 
-  const today = new Date().toISOString().split('T')[0];
-  const fromDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+  const today = localIsoDate(new Date());
+  const fromDate = localIsoDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
 
   const { data: attData, refetch, isRefetching } = useQuery({
     queryKey: ['att-summary-student', studentId],

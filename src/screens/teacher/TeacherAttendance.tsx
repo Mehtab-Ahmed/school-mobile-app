@@ -1,3 +1,4 @@
+import { localIsoDate } from '../../utils/date';
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, useColorScheme,
@@ -28,7 +29,7 @@ export default function TeacherAttendance() {
   const theme = scheme === 'dark' ? Colors.dark : Colors.light;
   const qc = useQueryClient();
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = localIsoDate(new Date());
   const [date, setDate] = useState(today);
   const [selectedClass, setSelectedClass] = useState<number | null>(null);
   const [statusMap, setStatusMap] = useState<Record<number, AttStatus>>({});

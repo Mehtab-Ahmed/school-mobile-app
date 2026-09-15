@@ -1,3 +1,4 @@
+import { isPastDue } from '../../utils/date';
 import React from 'react';
 import {
   View, Text, StyleSheet, FlatList, useColorScheme,
@@ -47,7 +48,7 @@ export default function StudentHomework() {
   });
 
   const renderItem = ({ item }: { item: Homework }) => {
-    const isOverdue = new Date(item.dueDate) < new Date();
+    const isOverdue = isPastDue(item.dueDate);
     return (
       <Card style={styles.hwCard}>
         <View style={styles.hwHeader}>

@@ -1,6 +1,9 @@
+import { localIsoDate } from '../../utils/date';
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, useColorScheme, RefreshControl, ActivityIndicator } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useChildren } from '../../hooks/useChildren';
+import { ChildSwitcher } from '../../components/ChildSwitcher';
 import { useAuthStore } from '../../store/authStore';
 import { studentsApi } from '../../api/students';
 import { attendanceApi } from '../../api/attendance';
@@ -14,18 +17,11 @@ export default function ParentAttendance() {
   const theme = scheme === 'dark' ? Colors.dark : Colors.light;
   const user = useAuthStore((s) => s.user);
 
-  const { data: childrenData } = useQuery({
-    queryKey: ['children', user?.userId],
-    queryFn: () => studentsApi.byParent(user!.userId),
-    enabled: !!user,
-  });
+  const { child, childId } = useChildren();
+  const childName = child?.fullName ?? '';
 
-  const children = childrenData?.data?.data ?? [];
-  const childId = children[0]?.id;
-  const childName = children[0] ? `${children[0].user.firstName} ${children[0].user.lastName}` : '';
-
-  const today = new Date().toISOString().split('T')[0];
-  const fromDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+  const today = localIsoDate(new Date());
+  const fromDate = localIsoDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['att-parent-detail', childId],
@@ -40,6 +36,7 @@ export default function ParentAttendance() {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScreenHeader title="Child's Attendance" />
+      <ChildSwitcher />
       {isLoading ? (
         <ActivityIndicator color={Colors.primary[500]} style={{ marginTop: 40 }} />
       ) : (
@@ -54,7 +51,7 @@ export default function ParentAttendance() {
               <View>
                 <Text style={[styles.childName, { color: theme.text }]}>{childName}</Text>
                 <Text style={[styles.childSub, { color: theme.textSecondary }]}>
-                  {children[0]?.classSection?.grade?.name} – {children[0]?.classSection?.section?.name}
+                  {child?.className}
                 </Text>
               </View>
             </Card>

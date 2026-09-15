@@ -1,3 +1,4 @@
+import { localIsoDate } from '../../utils/date';
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
@@ -36,8 +37,8 @@ export default function TeacherStudents() {
     queryFn: () => studentsApi.list({ size: 200 }),
   });
 
-  const today = new Date().toISOString().split('T')[0];
-  const fromDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+  const today = localIsoDate(new Date());
+  const fromDate = localIsoDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
 
   const { data: attData } = useQuery({
     queryKey: ['att-student', selectedStudent?.id],

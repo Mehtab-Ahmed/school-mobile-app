@@ -30,7 +30,7 @@ export interface DigestView {
   digestType: string;
   period: string;
   title?: string;
-  summary?: string;
+  summary?: string | Record<string, unknown>;
   createdAt?: string;
 }
 

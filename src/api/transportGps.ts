@@ -1,4 +1,5 @@
 import api from './axios';
+import { mapData } from './mapResponse';
 import { ApiResponse } from '../types';
 
 export interface ParentTransportView {
@@ -6,8 +7,12 @@ export interface ParentTransportView {
   studentName?: string;
   routeId?: number;
   routeName?: string;
+  /** Shown under the route name — the bus registration number. */
   routeCode?: string;
+  vehicleNumber?: string;
+  driverName?: string;
   stopName?: string;
+  dropStopName?: string;
   tripActive?: boolean;
   latitude?: number;
   longitude?: number;
@@ -18,7 +23,18 @@ export interface ParentTransportView {
 }
 
 export const transportGpsApi = {
-  child: (studentId: number) => api.get<ApiResponse<ParentTransportView>>(`/transport/child/${studentId}`),
+  /** A child's bus: the server's field names mapped to what the tracking screen shows. */
+  child: (studentId: number) =>
+    mapData(api.get<ApiResponse<any>>(`/transport/child/${studentId}`), (v): ParentTransportView | null => v ? ({
+      ...v,
+      routeCode: v.vehicleNumber ?? undefined,
+      stopName: v.pickupStopName ?? v.dropStopName ?? undefined,
+      dropStopName: v.dropStopName ?? undefined,
+      latitude: v.busLatitude ?? undefined,
+      longitude: v.busLongitude ?? undefined,
+      locationUpdatedAt: v.busUpdatedAt ?? undefined,
+      status: v.todayStatus ?? undefined,
+    }) : null),
   childAttendance: (studentId: number) => api.get<ApiResponse<any[]>>(`/transport/child/${studentId}/attendance`),
   routeStops: (routeId: number) => api.get<ApiResponse<any[]>>(`/transport/routes/${routeId}/stops`),
   liveLocation: (routeId: number) => api.get<ApiResponse<any>>(`/transport/routes/${routeId}/live-location`),

@@ -12,6 +12,8 @@ export interface AuthUser {
   schoolSlug?: string;
   schoolName?: string;
   forcePasswordChange?: boolean;
+  /** Set until the person accepts the current privacy notice. */
+  consentRequired?: boolean;
 }
 
 /** Backend returns a flat response — no nested user object */
@@ -124,13 +126,18 @@ export interface AttendanceSummary {
 export interface FeePayment {
   id: number;
   receiptNumber: string;
+  /** Amount of this due after concession and late fee. */
   amount: number;
   paymentDate: string;
-  paymentMethod: string;
-  status: 'PAID' | 'PENDING' | 'OVERDUE' | 'PARTIAL';
+  paymentMethod?: string;
+  status: 'PAID' | 'PENDING' | 'OVERDUE' | 'PARTIAL' | 'WAIVED';
   feeCategory?: { name: string };
   paidAmount?: number;
+  /** Still owed on this due. */
   dueAmount?: number;
+  dueDate?: string;
+  /** Billing period, e.g. "April 2026". */
+  period?: string;
 }
 
 export interface StudentFeeSummary {
@@ -282,6 +289,8 @@ export interface BookIssue {
 
 export interface RouteStop {
   id: number;
+  /** The server's field; `name` is kept for older responses. */
+  stopName?: string;
   name: string;
   sequence: number;
   morningPickupTime?: string;

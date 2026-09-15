@@ -31,7 +31,7 @@ export default function EventsScreen() {
   const theme = scheme === 'dark' ? Colors.dark : Colors.light;
   const { user } = useAuthStore();
   const role = user?.primaryRole ?? 'STUDENT';
-  const canCreate = role === 'ADMIN' || role === 'TEACHER';
+  const canCreate = role === 'ADMIN' || role === 'PRINCIPAL' || role === 'TEACHER';
   const qc = useQueryClient();
 
   const [showModal, setShowModal] = useState(false);

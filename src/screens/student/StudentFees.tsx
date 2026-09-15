@@ -114,7 +114,9 @@ export default function StudentFees() {
               <Text style={[styles.payReceipt, { color: theme.textMuted }]}>{item.receiptNumber}</Text>
               <Text style={[styles.payCategory, { color: theme.text }]}>{item.feeCategory?.name ?? 'General'}</Text>
               <Text style={[styles.payDate, { color: theme.textSecondary }]}>
-                {item.paymentDate} · {item.paymentMethod ?? 'N/A'}
+                {item.status === 'PAID'
+                  ? `Paid ${item.paymentDate}${item.paymentMethod ? ` · ${item.paymentMethod}` : ''}`
+                  : `${item.period ? `${item.period} · ` : ''}Due ${item.dueDate ?? item.paymentDate}`}
               </Text>
             </View>
             <View style={{ alignItems: 'flex-end', gap: 6 }}>

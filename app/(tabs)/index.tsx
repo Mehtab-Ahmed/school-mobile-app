@@ -7,7 +7,7 @@ import DriverPortal from '../../src/screens/driver/DriverPortal';
 
 export default function DashboardTab() {
   const role = useAuthStore((s) => s.user?.primaryRole);
-  if (role === 'ADMIN') return <AdminDashboard />;
+  if (role === 'ADMIN' || role === 'PRINCIPAL') return <AdminDashboard />;
   if (role === 'TEACHER') return <TeacherDashboard />;
   if (role === 'PARENT') return <ParentDashboard />;
   if (role === 'DRIVER') return <DriverPortal />;

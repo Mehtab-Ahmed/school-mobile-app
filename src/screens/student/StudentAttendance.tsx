@@ -1,3 +1,4 @@
+import { localIsoDate } from '../../utils/date';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, useColorScheme, RefreshControl, ActivityIndicator } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -28,8 +29,8 @@ export default function StudentAttendance() {
   const student = studentsData?.data?.data?.content?.find((s) => s.user?.id === user?.userId);
   const studentId = student?.id;
 
-  const fromDate = new Date(year, month, 1).toISOString().split('T')[0];
-  const toDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+  const fromDate = localIsoDate(new Date(year, month, 1));
+  const toDate = localIsoDate(new Date(year, month + 1, 0));
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['att-summary-detail', studentId, month, year],

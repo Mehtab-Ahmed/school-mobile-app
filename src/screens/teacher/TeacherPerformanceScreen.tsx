@@ -41,7 +41,7 @@ export default function TeacherPerformanceScreen() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? Colors.dark : Colors.light;
   const { user } = useAuthStore();
-  const isAdmin = user?.primaryRole === 'ADMIN';
+  const isAdmin = user?.primaryRole === 'ADMIN' || user?.primaryRole === 'PRINCIPAL';
   const qc = useQueryClient();
 
   const { data: myData, isLoading: myLoading } = useQuery({

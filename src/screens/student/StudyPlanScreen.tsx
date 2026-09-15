@@ -1,3 +1,4 @@
+import { localIsoDate } from '../../utils/date';
 import React, { useState } from 'react';
 import {
   ActivityIndicator, Pressable, RefreshControl, ScrollView,
@@ -78,7 +79,7 @@ export default function StudyPlanScreen() {
     );
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localIsoDate(new Date());
 
   return (
     <ScrollView

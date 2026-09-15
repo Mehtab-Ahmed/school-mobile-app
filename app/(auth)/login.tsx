@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   KeyboardAvoidingView, Platform, useColorScheme, Alert,
 } from 'react-native';
-import { router, type Href } from 'expo-router';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { authApi } from '../../src/api/auth';
 import { useAuthStore } from '../../src/store/authStore';
@@ -24,8 +24,9 @@ export default function LoginScreen() {
   const theme = scheme === 'dark' ? Colors.dark : Colors.light;
   const login = useAuthStore((s) => s.login);
 
+  const { expired } = useLocalSearchParams<{ expired?: string }>();
   const [identifier, setIdentifier] = useState('');
-  const [tenantId, setTenantId] = useState('test-school');
+  const [tenantId, setTenantId] = useState(__DEV__ ? 'test-school' : '');
   const [password, setPassword] = useState('');
 
   const mutation = useMutation({
@@ -45,9 +46,11 @@ export default function LoginScreen() {
           schoolSlug: d.schoolSlug,
           schoolName: d.schoolName,
           forcePasswordChange: d.forcePasswordChange,
+          consentRequired: (d as any).consentRequired,
         };
         await login(user, d.accessToken, d.refreshToken);
-        router.replace((d.forcePasswordChange ? '/(auth)/change-password' : '/(tabs)') as Href);
+        router.replace((d.forcePasswordChange ? '/(auth)/change-password'
+          : (d as any).consentRequired ? '/(auth)/consent' : '/(tabs)') as Href);
       } else {
         Alert.alert('Login Failed', 'Unexpected response from server.');
       }
@@ -87,6 +90,11 @@ export default function LoginScreen() {
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.cardTitle, { color: theme.text }]}>Sign In</Text>
           <Text style={[styles.cardSub, { color: theme.textSecondary }]}>Use your school-scoped login credentials</Text>
+          {expired === '1' && (
+            <View style={styles.expired}>
+              <Text style={styles.expiredText}>Your session ended. Please sign in again.</Text>
+            </View>
+          )}
 
           <Input
             label="Email / Student ID / Parent ID / Phone"
@@ -120,8 +128,16 @@ export default function LoginScreen() {
             fullWidth
             style={{ marginTop: 4 }}
           />
+          <TouchableOpacity
+            onPress={() => router.push({ pathname: '/(auth)/forgot-password', params: { tenantId, identifier } } as unknown as Href)}
+            style={styles.forgot}
+            accessibilityRole="link"
+          >
+            <Text style={{ color: Colors.primary[500], fontWeight: '600' }}>Forgot password?</Text>
+          </TouchableOpacity>
         </View>
 
+        {__DEV__ && (
         <View style={[styles.quickCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.quickTitle, { color: theme.textSecondary }]}>QUICK LOGIN (DEMO)</Text>
           <View style={styles.quickGrid}>
@@ -143,10 +159,7 @@ export default function LoginScreen() {
             ))}
           </View>
         </View>
-
-        <Text style={[styles.footer, { color: theme.textMuted }]}>
-          School ERP v1.0 - Powered by React Native + Spring Boot
-        </Text>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -185,5 +198,7 @@ const styles = StyleSheet.create({
   },
   quickIcon: { fontSize: 12, fontWeight: '900' },
   quickRole: { fontSize: 13, fontWeight: '700' },
-  footer: { textAlign: 'center', fontSize: 11, marginBottom: 20 },
+  forgot: { alignItems: 'center', paddingVertical: 14 },
+  expired: { backgroundColor: '#fef3c7', borderRadius: 10, padding: 10, marginBottom: 14 },
+  expiredText: { color: '#92400e', fontSize: 13 },
 });

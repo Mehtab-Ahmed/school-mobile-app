@@ -4,6 +4,8 @@ import {
   ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useChildren } from '../../hooks/useChildren';
+import { getAccessibleStudents } from '../../utils/studentAccess';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { studentsApi } from '../../api/students';
@@ -18,14 +20,15 @@ export default function StudentTransport() {
   const theme = scheme === 'dark' ? Colors.dark : Colors.light;
   const user = useAuthStore(s => s.user);
 
-  const { data: studentsData } = useQuery({
-    queryKey: ['student-profile', user?.userId],
-    queryFn: () => studentsApi.list({ size: 100 }),
-    enabled: !!user,
+  // Parents see the selected child; students see themselves.
+  const isParent = user?.primaryRole === 'PARENT';
+  const { childId, isLoading: childrenLoading } = useChildren();
+  const { data: students, isLoading: studentsLoading } = useQuery({
+    queryKey: ['transport-accessible-students', user?.userId],
+    queryFn: () => getAccessibleStudents(user),
+    enabled: !!user && !isParent,
   });
-
-  const student = studentsData?.data?.data?.content?.find(s => s.user?.id === user?.userId);
-  const studentId = student?.id;
+  const studentId = isParent ? childId : students?.[0]?.id;
 
   const { data: transportData, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['student-transport', studentId],
@@ -35,10 +38,19 @@ export default function StudentTransport() {
 
   const transport: StudentTransportType | null = transportData?.data ?? null;
 
-  if (isLoading || !studentId) {
+  if (isLoading || childrenLoading || studentsLoading) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
         <ActivityIndicator size="large" color={Colors.primary[500]} />
+      </View>
+    );
+  }
+  if (!studentId) {
+    return (
+      <View style={[styles.center, { backgroundColor: theme.background }]}>
+        <Text style={{ color: theme.textSecondary, textAlign: 'center', padding: 24 }}>
+          {isParent ? 'No children are linked to your account yet.' : "We couldn't find your student record."}
+        </Text>
       </View>
     );
   }
@@ -100,7 +112,7 @@ export default function StudentTransport() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.stopLabel, { color: theme.textMuted }]}>Morning Pickup</Text>
-                  <Text style={[styles.stopName, { color: theme.text }]}>{transport.boardingStop.name}</Text>
+                  <Text style={[styles.stopName, { color: theme.text }]}>{(transport.boardingStop.stopName ?? transport.boardingStop.name)}</Text>
                   {transport.boardingStop.morningPickupTime && (
                     <View style={styles.timeRow}>
                       <Ionicons name="time-outline" size={13} color={theme.textMuted} />
@@ -124,7 +136,7 @@ export default function StudentTransport() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.stopLabel, { color: theme.textMuted }]}>Evening Drop</Text>
-                  <Text style={[styles.stopName, { color: theme.text }]}>{transport.dropStop.name}</Text>
+                  <Text style={[styles.stopName, { color: theme.text }]}>{(transport.dropStop.stopName ?? transport.dropStop.name)}</Text>
                   {transport.dropStop.eveningDropTime && (
                     <View style={styles.timeRow}>
                       <Ionicons name="time-outline" size={13} color={theme.textMuted} />
@@ -144,7 +156,7 @@ export default function StudentTransport() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.stopLabel, { color: theme.textMuted }]}>My Stop</Text>
-                  <Text style={[styles.stopName, { color: theme.text }]}>{transport.stop.name}</Text>
+                  <Text style={[styles.stopName, { color: theme.text }]}>{(transport.stop.stopName ?? transport.stop.name)}</Text>
                   {transport.stop.morningPickupTime && (
                     <View style={styles.timeRow}>
                       <Ionicons name="time-outline" size={13} color={theme.textMuted} />

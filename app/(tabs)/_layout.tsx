@@ -57,10 +57,11 @@ export default function TabsLayout() {
   const { isAuthenticated, user } = useAuthStore();
 
   if (!isAuthenticated) return <Redirect href="/(auth)/login" />;
+  if (user?.consentRequired) return <Redirect href={'/(auth)/consent' as any} />;
 
   const role = user?.primaryRole ?? 'STUDENT';
   const tabs =
-    role === 'ADMIN' ? ADMIN_TABS :
+    role === 'ADMIN' || role === 'PRINCIPAL' ? ADMIN_TABS :
     role === 'TEACHER' ? TEACHER_TABS :
     role === 'PARENT' ? PARENT_TABS :
     role === 'DRIVER' ? DRIVER_TABS :

@@ -1,9 +1,11 @@
+import { localIsoDate } from '../../utils/date';
 import React, { useEffect, useState } from 'react';
 import {
   ScrollView, View, Text, StyleSheet, useColorScheme,
   RefreshControl, TouchableOpacity,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useChildren } from '../../hooks/useChildren';
 import { useAuthStore } from '../../store/authStore';
 import { studentsApi } from '../../api/students';
 import { parentApi } from '../../api/parent';
@@ -25,6 +27,22 @@ function childName(c: any) {
   return `${c.user?.firstName ?? ''} ${c.user?.lastName ?? ''}`.trim() || c.admissionNumber || `Child #${c.id}`;
 }
 
+/** Digests arrive as a small object (headline, highlights…); show readable text. */
+function digestText(summary: unknown): string {
+  if (!summary) return '';
+  if (typeof summary === 'string') return summary;
+  if (typeof summary === 'object') {
+    const s = summary as Record<string, unknown>;
+    const lead = s.headline ?? s.text ?? s.message ?? s.summary;
+    if (typeof lead === 'string') return lead;
+    return Object.entries(s)
+      .filter(([, v]) => typeof v === 'string' || typeof v === 'number')
+      .map(([k, v]) => `${k.replace(/([A-Z])/g, ' $1').toLowerCase()}: ${v}`)
+      .join(' · ');
+  }
+  return '';
+}
+
 function childClass(c: any) {
   return [c.className ?? c.classSection?.grade?.name, c.sectionName ?? c.classSection?.section?.name].filter(Boolean).join(' - ');
 }
@@ -33,33 +51,13 @@ export default function ParentDashboard() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? Colors.dark : Colors.light;
   const user = useAuthStore((s) => s.user);
-  const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
+  // One normalized child list shared by every parent screen (the choice carries across screens).
+  const { children, child: selectedChild, childId, setChildId: setSelectedChildId, refetch } = useChildren();
+  const selectedChildId = childId;
+  const isRefetching = false;
 
-  const { data: childrenData, refetch, isRefetching } = useQuery({
-    queryKey: ['children', user?.userId],
-    queryFn: async () => {
-      try {
-        return await parentApi.children();
-      } catch {
-        return studentsApi.byParent(user!.userId);
-      }
-    },
-    enabled: !!user,
-  });
-
-  const children = childrenData?.data?.data ?? [];
-  const selectedChild = children.find((c: any) => (c.studentId ?? c.id) === selectedChildId) ?? children[0];
-  const childId = selectedChild ? ((selectedChild as any).studentId ?? selectedChild.id) : null;
-
-  useEffect(() => {
-    if (!selectedChildId && children.length > 0) {
-      const first = children[0] as any;
-      setSelectedChildId(first.studentId ?? first.id);
-    }
-  }, [children, selectedChildId]);
-
-  const today = new Date().toISOString().split('T')[0];
-  const fromDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+  const today = localIsoDate(new Date());
+  const fromDate = localIsoDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
 
   const { data: attData, refetch: refetchAtt } = useQuery({
     queryKey: ['att-parent', childId],
@@ -95,7 +93,8 @@ export default function ParentDashboard() {
   const overview = overviewData?.data?.data;
   const announcements = annData?.data?.data ?? [];
   const latestDigest = (digestsData?.data?.data ?? []).find((d) => d.studentId === childId);
-  const attPct = Number(overview?.attendancePercentage ?? summary?.attendancePercentage ?? 0);
+  const attPct = Number(summary?.attendancePercentage ?? (overview as any)?.attendancePct ?? 0);
+  const needsAttention = (!!summary?.totalDays && attPct < 75) || Number(fees?.overdueAmount ?? 0) > 0;
 
   const refreshAll = () => {
     refetch();
@@ -162,13 +161,13 @@ export default function ParentDashboard() {
                 <Text style={[styles.digestTitle, { color: theme.text }]}>Parent Overview</Text>
                 <Text style={[styles.digestSub, { color: theme.textSecondary }]}>{childName(selectedChild)}</Text>
               </View>
-              <Badge label={overview?.behaviorRemarks ? 'Review' : 'On Track'} variant={overview?.behaviorRemarks ? 'warning' : 'success'} small />
+              <Badge label={needsAttention ? 'Needs attention' : 'On track'} variant={needsAttention ? 'warning' : 'success'} small />
             </View>
             <Text style={[styles.digestText, { color: theme.textSecondary }]}>
-              Attendance {attPct.toFixed(0)}%, {overview?.pendingHomework ?? 0} pending homework, fee balance {fmt(Number(overview?.feeBalance ?? fees?.totalBalance ?? 0))}.
+              Attendance this month {attPct.toFixed(0)}%{fees ? `, fee balance ${fmt(Number(fees.totalBalance))}` : ''}{Number(fees?.overdueAmount ?? 0) > 0 ? ` (${fmt(Number(fees?.overdueAmount))} overdue)` : ''}.
             </Text>
-            {latestDigest?.summary && (
-              <Text style={[styles.digestText, { color: theme.textMuted }]} numberOfLines={3}>{latestDigest.summary}</Text>
+            {!!digestText(latestDigest?.summary) && (
+              <Text style={[styles.digestText, { color: theme.textMuted }]} numberOfLines={3}>{digestText(latestDigest?.summary)}</Text>
             )}
           </Card>
 

@@ -4,6 +4,9 @@ import {
   useColorScheme, ActivityIndicator, RefreshControl, Modal, ScrollView,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useChildren } from '../../hooks/useChildren';
+import { ChildSwitcher } from '../../components/ChildSwitcher';
+import { isPastDue } from '../../utils/date';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { studentsApi } from '../../api/students';
@@ -23,14 +26,7 @@ export default function ParentHomework() {
   const [filter, setFilter] = useState<Filter>('ALL');
   const [selected, setSelected] = useState<HomeworkSubmission | null>(null);
 
-  const { data: childrenData } = useQuery({
-    queryKey: ['parent-children', user?.userId],
-    queryFn: () => studentsApi.byParent(user!.userId),
-    enabled: !!user,
-  });
-
-  const children = childrenData?.data?.data ?? [];
-  const child = children[0]; // Use first child
+  const { child } = useChildren();
 
   const { data: hwData, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['child-homework', child?.id],
@@ -51,7 +47,8 @@ export default function ParentHomework() {
     ? allHomework
     : allHomework.filter(h => h.status === filter);
 
-  const isPast = (dueDate: string) => new Date(dueDate) < new Date();
+  // Due today isn't overdue yet.
+  const isPast = (dueDate: string) => isPastDue(dueDate);
 
   if (isLoading) {
     return (
@@ -68,11 +65,11 @@ export default function ParentHomework() {
         <Text style={styles.headerTitle}>Child's Homework</Text>
         {child && (
           <Text style={styles.headerSub}>
-            {child.user.firstName} {child.user.lastName} ·{' '}
-            {child.classSection?.grade?.name} – {child.classSection?.section?.name}
+            {child.fullName}{child.className ? ` · ${child.className}` : ''}
           </Text>
         )}
       </View>
+      <ChildSwitcher />
 
       {!child ? (
         <EmptyState icon="people-outline" title="No child linked" subtitle="Contact school admin to link your child's account" />

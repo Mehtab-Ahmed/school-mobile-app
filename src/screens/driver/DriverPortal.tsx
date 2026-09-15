@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, ActivityIndicator, useColorScheme, FlatList, Switch,
+  Alert, ActivityIndicator, useColorScheme, AppState,
 } from 'react-native';
-import * as Location from 'expo-location';
+import { startDriverTracking, stopDriverTracking } from '../../tasks/driverLocation';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import axios from '../../api/axios';
@@ -59,7 +59,6 @@ export default function DriverPortal() {
   const theme = scheme === 'dark' ? Colors.dark : Colors.light;
 
   const [tripActive, setTripActive] = useState(false);
-  const [locationWatcher, setLocationWatcher] = useState<Location.LocationSubscription | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [expandedStop, setExpandedStop] = useState<number | null>(null);
 
@@ -77,7 +76,14 @@ export default function DriverPortal() {
   });
 
   const route: Route | null = routeData?.data?.data ?? null;
-  const stops: Stop[] = stopsData?.data?.data ?? [];
+  // The server sends { stop, students } per stop; flatten so each row has the stop's own id and name.
+  const stops: Stop[] = ((stopsData?.data?.data ?? []) as any[]).map((row) => ({
+    ...(row.stop ?? row),
+    id: row.stop?.id ?? row.id,
+    stopName: row.stop?.stopName ?? row.stop?.name ?? row.stopName ?? 'Stop',
+    sequence: row.stop?.sequence ?? row.sequence,
+    students: row.students ?? [],
+  }));
 
   // Sync trip state from route
   useEffect(() => {
@@ -110,48 +116,44 @@ export default function DriverPortal() {
     mutationFn: ({ studentId, stopId }: { studentId: number; stopId: number }) =>
       driverApi.markBoarding(studentId, stopId),
     onSuccess: () => refetchStops(),
-    onError: () => Alert.alert('Error', 'Failed to mark boarding'),
+    onError: (e: any) => Alert.alert("Couldn't mark boarding", e?.response?.data?.message ?? 'Check your connection and try again.'),
   });
 
   const alightingMutation = useMutation({
     mutationFn: ({ studentId, stopId }: { studentId: number; stopId: number }) =>
       driverApi.markAlighting(studentId, stopId),
     onSuccess: () => refetchStops(),
-    onError: () => Alert.alert('Error', 'Failed to mark alighting'),
+    onError: (e: any) => Alert.alert("Couldn't mark drop-off", e?.response?.data?.message ?? 'Check your connection and try again.'),
   });
 
   // ── GPS Tracking ──────────────────────────────────────────────────────────
 
-  const startLocationTracking = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Location permission is required for live tracking.');
-      return;
-    }
+  const onFix = (lat: number, lng: number) => setCurrentLocation({ lat, lng });
 
-    const sub = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.High, timeInterval: 15000, distanceInterval: 20 },
-      (location) => {
-        const { latitude, longitude } = location.coords;
-        setCurrentLocation({ lat: latitude, lng: longitude });
-        driverApi.updateLocation(latitude, longitude).catch(() => {});
-      }
-    );
-    setLocationWatcher(sub);
+  const startLocationTracking = async () => {
+    const mode = await startDriverTracking(onFix);
+    if (mode === 'denied') {
+      Alert.alert('Location is off', 'Allow location for this app so parents can see where the bus is.');
+    } else if (mode === 'foreground') {
+      Alert.alert('Keep this screen open',
+        'Location is only allowed while the app is open. To keep sharing when the phone is locked, choose "Allow all the time" for this app in Settings.');
+    }
   };
 
   const stopLocationTracking = () => {
-    if (locationWatcher) {
-      locationWatcher.remove();
-      setLocationWatcher(null);
-    }
+    stopDriverTracking();
+    setCurrentLocation(null);
   };
 
+  // A trip already under way (app restarted, screen reopened, phone unlocked) keeps sharing its location.
   useEffect(() => {
-    return () => {
-      if (locationWatcher) locationWatcher.remove();
-    };
-  }, [locationWatcher]);
+    if (!tripActive) return;
+    startDriverTracking(onFix).catch(() => {});
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') startDriverTracking(onFix).catch(() => {});
+    });
+    return () => sub.remove();
+  }, [tripActive]);
 
   const handleTripToggle = () => {
     if (tripActive) {
@@ -261,7 +263,7 @@ export default function DriverPortal() {
         stops.map((stop, idx) => {
           const isExpanded = expandedStop === stop.id;
           const boardedCount = (stop.students ?? []).filter(
-            (s: any) => s.lastBoardedStopId && !s.lastAlightedStopId
+            (s: any) => s.onBus ?? (s.lastBoardedStopId && !s.lastAlightedStopId)
           ).length;
 
           return (
@@ -294,13 +296,15 @@ export default function DriverPortal() {
                     <Text style={[styles.noStudents, { color: theme.textMuted }]}>No students at this stop</Text>
                   ) : (
                     (stop.students as any[]).map((item: any) => {
-                      const student = item.student ?? item;
-                      const fullName = `${student.user?.firstName ?? ''} ${student.user?.lastName ?? ''}`.trim();
-                      const boarded = item.lastBoardedStopId && !item.lastAlightedStopId;
-                      const alighted = !!item.lastAlightedStopId;
+                      const studentId: number = item.studentId ?? item.student?.id;
+                      const fullName = item.name
+                        ?? (`${item.student?.user?.firstName ?? ''} ${item.student?.user?.lastName ?? ''}`.trim() || 'Student');
+                      // Today's state from the server; older servers only send the raw stop ids.
+                      const boarded = item.onBus ?? (item.lastBoardedStopId && !item.lastAlightedStopId);
+                      const alighted = item.droppedOff ?? !!item.lastAlightedStopId;
 
                       return (
-                        <View key={student.id} style={[styles.studentRow, { borderBottomColor: theme.border }]}>
+                        <View key={studentId} style={[styles.studentRow, { borderBottomColor: theme.border }]}>
                           <Avatar name={fullName} size={38} />
                           <View style={{ flex: 1 }}>
                             <Text style={[styles.studentName, { color: theme.text }]}>{fullName}</Text>
@@ -315,7 +319,7 @@ export default function DriverPortal() {
                           {tripActive && !boarded && !alighted && (
                             <TouchableOpacity
                               style={[styles.actionBtn, { backgroundColor: '#22c55e' }]}
-                              onPress={() => boardingMutation.mutate({ studentId: student.id, stopId: stop.id })}
+                              onPress={() => boardingMutation.mutate({ studentId, stopId: stop.id })}
                               disabled={boardingMutation.isPending}
                             >
                               <Ionicons name="enter-outline" size={16} color="#fff" />
@@ -325,7 +329,7 @@ export default function DriverPortal() {
                           {tripActive && boarded && (
                             <TouchableOpacity
                               style={[styles.actionBtn, { backgroundColor: '#f59e0b' }]}
-                              onPress={() => alightingMutation.mutate({ studentId: student.id, stopId: stop.id })}
+                              onPress={() => alightingMutation.mutate({ studentId, stopId: stop.id })}
                               disabled={alightingMutation.isPending}
                             >
                               <Ionicons name="exit-outline" size={16} color="#fff" />

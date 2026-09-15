@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, useColorScheme,
   Alert, Modal, FlatList, ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { routeFor } from '../../hooks/usePushNotifications';
+import { PrivacyPanel } from '../../components/PrivacyPanel';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
@@ -68,6 +70,7 @@ type ModalScreen =
   | 'teacherToday' | 'studentRevision' | 'sports' | 'onlineClasses' | 'portfolio' | 'recommendations'
   | 'parentMapping'
   | 'studyPlan' | 'earlyWarning' | 'teacherAi' | 'curriculum'
+  | 'privacy'
   | null;
 
 export default function MoreScreen() {
@@ -77,6 +80,9 @@ export default function MoreScreen() {
   const qc = useQueryClient();
 
   const [screen, setScreen] = useState<ModalScreen>(null);
+  // A tapped push notification can land here asking to show the notification list.
+  const { open } = useLocalSearchParams<{ open?: string }>();
+  useEffect(() => { if (open === 'notifications') setScreen('notifications'); }, [open]);
   const [leaveForm, setLeaveForm] = useState({ startDate: '', endDate: '', reason: '' });
   const [leaveTypeId, setLeaveTypeId] = useState<number | null>(null);
 
@@ -223,6 +229,8 @@ export default function MoreScreen() {
     );
   }
 
+  roleMenuItems.push({ icon: 'shield-checkmark-outline', label: 'Privacy & your data', subtitle: 'How your data is used · delete account', color: '#64748b', action: () => setScreen('privacy') });
+
   // Full-screen modal screens (Library, Transport, Timetable, etc.)
   const fullScreenModal = (
     screenKey: ModalScreen,
@@ -306,6 +314,7 @@ export default function MoreScreen() {
       </Card>
 
       {/* Full-screen screens */}
+      {fullScreenModal('privacy', 'Privacy & your data', <PrivacyPanel />, '#475569')}
       {fullScreenModal('library', 'Library', <StudentLibrary />, Colors.primary[500])}
       {fullScreenModal('transport', 'Transport Info', <StudentTransport />, '#0ea5e9')}
       {fullScreenModal('timetable', 'Timetable', <StudentTimetable />, Colors.primary[600])}
@@ -386,13 +395,18 @@ export default function MoreScreen() {
             contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 40 }}
             ListEmptyComponent={<EmptyState icon="notifications-outline" title="No notifications" />}
             renderItem={({ item }) => (
-              <TouchableOpacity onPress={() => !item.read && markReadMutation.mutate(item.id)}>
+              <TouchableOpacity onPress={() => {
+                if (!item.read) markReadMutation.mutate(item.id);
+                const target = routeFor({ type: item.type, referenceType: (item as any).referenceType });
+                const href = typeof target === 'string' ? target : null;
+                if (href) { setScreen(null); router.push(href); }
+              }}>
                 <Card style={[styles.notifCard, !item.read ? { borderLeftWidth: 3, borderLeftColor: Colors.primary[500] } : {}]}>
                   <View style={styles.notifRow}>
                     <View style={[styles.notifDot, { backgroundColor: item.read ? theme.surface2 : Colors.primary[500] }]} />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.notifTitle, { color: theme.text }]}>{item.title}</Text>
-                      <Text style={[styles.notifMsg, { color: theme.textSecondary }]} numberOfLines={2}>{item.message}</Text>
+                      <Text style={[styles.notifMsg, { color: theme.textSecondary }]} numberOfLines={2}>{item.message ?? (item as any).body}</Text>
                       <Text style={[styles.notifDate, { color: theme.textMuted }]}>
                         {new Date(item.createdAt).toLocaleDateString()}
                       </Text>
